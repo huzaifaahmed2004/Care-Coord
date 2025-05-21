@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/lib/AuthContext.tsx","./src/lib/ForgotPasswordForm.tsx","./src/lib/LoginForm.tsx","./src/lib/RegisterForm.tsx","./src/lib/firebase.ts","./src/lib/utils.ts","./vite.config.ts"],"version":"5.6.3"}
