@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, DocumentSnapshot } from 'firebase/firestore';
 import { db } from './lib/firebase';
 import LoginForm from './lib/LoginForm';
 import ForgotPasswordForm from './lib/ForgotPasswordForm';
@@ -52,6 +52,7 @@ function MainHeader() {
   
   // Fetch user's name from Firestore
   useEffect(() => {
+    // Create a function to fetch the user's name
     async function fetchUserName() {
       if (!user) {
         setUserName('');
@@ -59,13 +60,16 @@ function MainHeader() {
       }
       
       try {
-        // First check patients collection (registration data)
+        // ALWAYS prioritize the patients collection (registration data) first
+        // This ensures we use the name the user provided in their profile
         const patientDocRef = doc(db, 'patients', user.uid);
         const patientDoc = await getDoc(patientDocRef);
         
         if (patientDoc.exists() && patientDoc.data().name) {
           // Use name from patients collection if available
-          setUserName(patientDoc.data().name);
+          const profileName = patientDoc.data().name;
+          console.log('Using name from patient profile:', profileName);
+          setUserName(profileName);
           return;
         }
         
@@ -79,16 +83,39 @@ function MainHeader() {
           return;
         }
         
-        // Fall back to Firebase Auth display name or email
-        setUserName(user.displayName || user.email?.split('@')[0] || '');
+        // Only as a last resort, fall back to email prefix
+        // IMPORTANT: We avoid using Google's display name completely
+        const fallbackName = user.email?.split('@')[0] || '';
+        console.log('No profile name found, using fallback:', fallbackName);
+        setUserName(fallbackName);
       } catch (error) {
         console.error('Error fetching user name:', error);
-        // Fall back to Firebase Auth display name or email
-        setUserName(user.displayName || user.email?.split('@')[0] || '');
+        // Fall back to email prefix as a last resort
+        const fallbackName = user.email?.split('@')[0] || '';
+        setUserName(fallbackName);
       }
     }
     
+    // Call fetchUserName immediately
     fetchUserName();
+    
+    // Set up a listener for profile changes
+    if (user) {
+      // Listen for changes to the user's profile in the patients collection
+      const unsubscribe = onSnapshot(doc(db, 'patients', user.uid), (doc: DocumentSnapshot) => {
+        if (doc.exists() && doc.data().name) {
+          const profileName = doc.data().name;
+          console.log('Profile updated, new name:', profileName);
+          setUserName(profileName);
+        } else {
+          // If profile was deleted or name removed, fetch name again
+          fetchUserName();
+        }
+      });
+      
+      // Clean up the listener when component unmounts or user changes
+      return unsubscribe;
+    }
   }, [user]);
 
   return (

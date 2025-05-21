@@ -56,9 +56,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         // Check if the user has a patient profile
         const hasProfile = await checkUserProfile(user.uid);
-        setIsNewUser(!hasProfile);
+        console.log('Auth state changed - User:', user.uid, 'Has profile:', hasProfile);
+        
+        // If user doesn't have a profile, mark as new user and set localStorage flag
+        if (!hasProfile) {
+          console.log('User needs to complete profile - setting isNewUser flag');
+          setIsNewUser(true);
+          window.localStorage.setItem('forceProfileCompletion', 'true');
+        } else {
+          setIsNewUser(false);
+          window.localStorage.removeItem('forceProfileCompletion');
+        }
       } else {
         setIsNewUser(false);
+        window.localStorage.removeItem('forceProfileCompletion');
       }
       
       setLoading(false);
@@ -111,7 +122,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Check if this is a new user (for patients)
       const hasProfile = await checkUserProfile(result.user.uid);
-      setIsNewUser(!hasProfile);
+      
+      // IMPORTANT: Force isNewUser to true for Google sign-ins without a profile
+      // This ensures Google sign-in users are properly directed to complete their profile
+      if (!hasProfile) {
+        setIsNewUser(true);
+        // Store a persistent flag to indicate this is a new user that needs to complete profile
+        window.localStorage.setItem('forceProfileCompletion', 'true');
+        console.log('Google login - New user detected, profile needed');
+      } else {
+        setIsNewUser(false);
+        window.localStorage.removeItem('forceProfileCompletion');
+        console.log('Google login - Existing user with profile');
+      }
     }
     
     return result.user;

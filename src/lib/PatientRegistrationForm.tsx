@@ -52,19 +52,40 @@ export default function PatientRegistrationForm() {
   
   // Check if user is already logged in but needs to complete profile
   useEffect(() => {
+    // Check for the force profile completion flag
+    const forceProfileCompletion = window.localStorage.getItem('forceProfileCompletion') === 'true';
+    
     if (user) {
+      console.log('User authenticated - checking profile status', 
+                 { uid: user.uid, isNewUser, forceProfileCompletion });
+      
+      // Update email in patient data
       setPatientData(prev => ({
         ...prev,
         email: user.email || ''
       }));
-      setStep('patient-info');
+      
+      // Always show profile form for new users or when forced
+      if (isNewUser || forceProfileCompletion) {
+        console.log('User needs to complete profile - showing form', 
+                   { isNewUser, forceProfileCompletion });
+        setStep('patient-info');
+        
+        // IMPORTANT: Ensure loading state is reset when showing the profile form
+        setLoading(false);
+      }
     }
-  }, [user]);
+  }, [user, isNewUser]);
   
   // Redirect to home if user is logged in and has completed profile
   useEffect(() => {
-    if (user && !isNewUser) {
+    const forceProfileCompletion = window.localStorage.getItem('forceProfileCompletion') === 'true';
+    
+    if (user && !isNewUser && !forceProfileCompletion) {
+      console.log('User already has profile - redirecting to home');
       navigate('/');
+    } else if (user && (isNewUser || forceProfileCompletion)) {
+      console.log('User needs to complete profile - staying on form');
     }
   }, [user, isNewUser, navigate]);
   
@@ -110,11 +131,19 @@ export default function PatientRegistrationForm() {
       
       // If successful, update the email in patient data
       if (user && user.email) {
+        // Update patient data with email
         setPatientData(prev => ({
           ...prev,
           email: user.email || ''
         }));
+        
+        // IMPORTANT: Explicitly force the form to show the profile completion step
         setStep('patient-info');
+        
+        // Force the isNewUser flag to true for Google sign-ins to ensure profile completion
+        window.localStorage.setItem('forceProfileCompletion', 'true');
+        
+        console.log('Google signup - Explicitly directing user to complete profile form');
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof FirebaseError 
@@ -122,6 +151,7 @@ export default function PatientRegistrationForm() {
         : 'Google sign up failed.';
       setError(errorMessage);
     } finally {
+      // IMPORTANT: Make sure loading state is reset to false
       setLoading(false);
     }
   };
@@ -153,6 +183,10 @@ export default function PatientRegistrationForm() {
         ...patientData,
         createdAt: new Date().toISOString()
       });
+      
+      // Clear the force profile completion flag since profile is now complete
+      window.localStorage.removeItem('forceProfileCompletion');
+      console.log('Profile saved successfully, cleared forceProfileCompletion flag');
       
       // Navigate to home page
       navigate('/');
@@ -466,10 +500,18 @@ export default function PatientRegistrationForm() {
               </button>
               <button
                 type="submit"
-                className="bg-[#FF3D71] hover:bg-[#ff5996] text-white font-semibold py-2 px-6 rounded"
+                className="bg-[#FF3D71] hover:bg-[#ff5996] text-white font-semibold py-2 px-6 rounded flex items-center justify-center min-w-[180px]"
                 disabled={loading}
               >
-                {loading ? 'Saving...' : 'Complete Registration'}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : 'Complete Registration'}
               </button>
             </div>
           </form>
