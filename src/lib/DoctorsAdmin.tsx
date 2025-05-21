@@ -7,6 +7,8 @@ import {
   doc,
   getDocs,
   updateDoc,
+  query,
+  where,
 } from "firebase/firestore";
 // Firebase Storage imports removed as we're using Base64 encoding instead
 import { useEffect, useState, useRef } from "react";
@@ -81,6 +83,7 @@ function DoctorModal({
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -318,6 +321,53 @@ function DoctorModal({
               className="w-full border rounded p-2"
             />
           </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border rounded p-2"
+              placeholder="doctor@example.com"
+            />
+          </div>
+          <div>
+            <label className="block mb-1 text-sm font-medium">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required={!doctor} // Only required for new doctors
+                className="w-full border rounded p-2 pr-10"
+                placeholder={doctor ? "Change password (optional)" : "Password"}
+                minLength={6}
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                    <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {doctor && (
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to keep current password
+              </p>
+            )}
+          </div>
           <div className="flex gap-2">
             <div className="w-1/2">
               <label className="block mb-1 text-sm font-medium">Gender</label>
@@ -391,56 +441,44 @@ function DoctorModal({
               />
             </div>
           </div>
+          
           <div>
-            <label className="block mb-1 text-sm font-medium">Email</label>
-            <input
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border rounded p-2"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">Fee Percentage</label>
+            <label className="block mb-1 text-sm font-medium">Fee Percentage (%)</label>
             <input
               name="feePercentage"
-              type="number"
               value={form.feePercentage}
               onChange={handleChange}
+              type="number"
               min={0}
-              required
+              max={100}
               className="w-full border rounded p-2"
             />
           </div>
-          {!doctor && (
-            <div>
-              <label className="block mb-1 text-sm font-medium">Password</label>
-              <input
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-                className="w-full border rounded p-2"
-              />
-            </div>
-          )}
-          <div className="flex justify-end gap-3 pt-2">
+
+          <div className="flex justify-end mt-6 space-x-2">
             <button
-              className="bg-gray-100 px-4 py-2 rounded hover:bg-gray-200"
               type="button"
               onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               className="bg-[#427DFF] text-white px-4 py-2 rounded hover:bg-[#285ccc]"
               type="submit"
+              disabled={saving}
             >
-              {doctor ? "Update" : "Add"}
+              {saving ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                <>{doctor ? "Update" : "Add"} Doctor</>
+              )}
             </button>
           </div>
         </form>
@@ -560,6 +598,32 @@ export default function DoctorsAdmin() {
       if (!newDoc.id) {
         throw new Error("Doctor ID is required for update");
       }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+      
+      // Check if password is provided and validate it
+      if (password && password.length > 0) {
+        if (password.length < 6) {
+          throw new Error("Password must be at least 6 characters long");
+        }
+        
+        // Create a notification for the password change
+        await addDoc(collection(db, 'notifications'), {
+          type: 'admin_password_change',
+          doctorEmail: email,
+          newPassword: password,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          read: false,
+          message: `Admin has updated password for doctor: ${email}`
+        });
+        
+        console.log("Password change notification created for:", email);
+      }
 
       const { id, ...doctorData } = newDoc;
       console.log("Updating doctor:", id, doctorData);
@@ -571,6 +635,32 @@ export default function DoctorsAdmin() {
         updatedAt: new Date().toISOString(),
       });
       console.log("Doctor updated in Firestore");
+      
+      // If a new password was provided, update it
+      if (password && password.length >= 6) {
+        // First, find the doctor's email to get their auth account
+        const doctorsQuery = query(
+          collection(db, 'doctors'),
+          where('email', '==', email)
+        );
+        const querySnapshot = await getDocs(doctorsQuery);
+        
+        if (!querySnapshot.empty) {
+          // We found the doctor, now we need to update their password
+          // Since we can't directly update Firebase Auth passwords from the client,
+          // we'll create a notification for the admin to handle it
+          await addDoc(collection(db, 'notifications'), {
+            type: 'admin_password_change',
+            doctorEmail: email,
+            newPassword: password,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            read: false,
+            message: `Admin has updated password for doctor: ${email}`
+          });
+          console.log("Password change notification created");
+        }
+      }
 
       // Update local state
       setDoctors(prev => prev.map(d =>

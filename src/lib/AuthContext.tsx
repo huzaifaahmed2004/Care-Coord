@@ -11,7 +11,7 @@ import {
   signInWithPopup,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -65,6 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    // Check if this email belongs to a doctor
+    const doctorsQuery = query(
+      collection(db, 'doctors'),
+      where('email', '==', email)
+    );
+    
+    const doctorSnapshot = await getDocs(doctorsQuery);
+    
+    if (!doctorSnapshot.empty) {
+      // This email belongs to a doctor, don't allow login through the main website
+      throw new Error('This email is registered as a doctor. Please use the doctor login page.');
+    }
+    
+    // Proceed with normal login for patients
     await signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -72,8 +86,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     
-    // Check if this is a new user
-    if (result.user) {
+    // Check if this email belongs to a doctor
+    if (result.user && result.user.email) {
+      const doctorsQuery = query(
+        collection(db, 'doctors'),
+        where('email', '==', result.user.email)
+      );
+      
+      const doctorSnapshot = await getDocs(doctorsQuery);
+      
+      if (!doctorSnapshot.empty) {
+        // This email belongs to a doctor, sign out and throw error
+        await signOut(auth);
+        throw new Error('This email is registered as a doctor. Please use the doctor login page.');
+      }
+      
+      // Check if this is a new user (for patients)
       const hasProfile = await checkUserProfile(result.user.uid);
       setIsNewUser(!hasProfile);
     }

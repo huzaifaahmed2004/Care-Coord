@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
-import { updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updateProfile, updateEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { db, auth } from './firebase';
 import { useAuth } from './AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 interface UserProfile {
   displayName: string;
@@ -15,6 +15,7 @@ interface UserProfile {
   bloodGroup: string;
   allergies: string;
   medicalHistory: string;
+  insuranceInfo: string;
 }
 
 const ProfilePage: React.FC = () => {
@@ -29,6 +30,8 @@ const ProfilePage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPasswordFields, setShowPasswordFields] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const [isGoogleUser, setIsGoogleUser] = useState<boolean>(false);
+  const [resetEmailSent, setResetEmailSent] = useState<boolean>(false);
 
   const [profile, setProfile] = useState<UserProfile>({
     displayName: user?.displayName || '',
@@ -40,6 +43,7 @@ const ProfilePage: React.FC = () => {
     bloodGroup: '',
     allergies: '',
     medicalHistory: '',
+    insuranceInfo: '',
   });
 
   // Fetch user profile data
@@ -49,19 +53,19 @@ const ProfilePage: React.FC = () => {
         navigate('/login');
         return;
       }
+      
+      // Check if user is authenticated with Google
+      const isGoogle = user.providerData.some(provider => provider.providerId === 'google.com');
+      setIsGoogleUser(isGoogle);
 
       setLoading(true);
       try {
-        // First check if there's data in the patients collection (from registration)
+        // Check if there's data in the patients collection
         const patientDocRef = doc(db, 'patients', user.uid);
         const patientDoc = await getDoc(patientDocRef);
         
-        // Then check if there's data in the users collection (from profile updates)
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
         if (patientDoc.exists()) {
-          // If patient data exists, use that as the primary source
+          // If patient data exists, use that
           const patientData = patientDoc.data();
           setProfile(prev => ({
             ...prev,
@@ -74,41 +78,29 @@ const ProfilePage: React.FC = () => {
             bloodGroup: patientData.bloodType || '',
             allergies: patientData.allergies || '',
             medicalHistory: patientData.medicalHistory || '',
-          }));
-          
-          // If user doc doesn't exist yet, create it with patient data
-          if (!userDoc.exists()) {
-            await setDoc(userDocRef, {
-              displayName: patientData.name || user.displayName || '',
-              email: patientData.email || user.email || '',
-              phoneNumber: patientData.phone || '',
-              address: patientData.address || '',
-              dateOfBirth: patientData.dateOfBirth || '',
-              gender: patientData.gender || '',
-              bloodGroup: patientData.bloodType || '',
-              allergies: patientData.allergies || '',
-              medicalHistory: patientData.medicalHistory || '',
-              createdAt: new Date().toISOString(),
-            }, { merge: true });
-          }
-        } else if (userDoc.exists()) {
-          // If only user data exists, use that
-          const userData = userDoc.data();
-          setProfile(prev => ({
-            ...prev,
-            displayName: userData.displayName || user.displayName || '',
-            email: userData.email || user.email || '',
-            phoneNumber: userData.phoneNumber || '',
-            address: userData.address || '',
-            dateOfBirth: userData.dateOfBirth || '',
-            gender: userData.gender || '',
-            bloodGroup: userData.bloodGroup || '',
-            allergies: userData.allergies || '',
-            medicalHistory: userData.medicalHistory || '',
+            insuranceInfo: patientData.insuranceInfo || '',
           }));
         } else {
-          // If no data exists anywhere, create a new user document
-          await setDoc(userDocRef, {
+          // If no patient data exists, create a new patient document with basic info
+          const newPatientData = {
+            name: user.displayName || '',
+            email: user.email || '',
+            phone: '',
+            address: '',
+            dateOfBirth: '',
+            gender: '',
+            bloodType: '',
+            allergies: '',
+            medicalHistory: '',
+            insuranceInfo: '',
+            createdAt: new Date().toISOString(),
+          };
+          
+          await setDoc(patientDocRef, newPatientData);
+          
+          // Set profile with the new data
+          setProfile(prev => ({
+            ...prev,
             displayName: user.displayName || '',
             email: user.email || '',
             phoneNumber: '',
@@ -118,8 +110,10 @@ const ProfilePage: React.FC = () => {
             bloodGroup: '',
             allergies: '',
             medicalHistory: '',
-            createdAt: new Date().toISOString(),
-          });
+            insuranceInfo: '',
+          }));
+          
+          console.log('Created new patient profile for user:', user.uid);
         }
       } catch (err) {
         console.error('Error fetching user profile:', err);
@@ -170,40 +164,33 @@ const ProfilePage: React.FC = () => {
         }
       }
       
-      // Update user document in Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      await setDoc(userDocRef, {
-        displayName: profile.displayName,
-        email: profile.email,
-        phoneNumber: profile.phoneNumber,
-        address: profile.address,
-        dateOfBirth: profile.dateOfBirth,
-        gender: profile.gender,
-        bloodGroup: profile.bloodGroup,
-        allergies: profile.allergies,
-        medicalHistory: profile.medicalHistory,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-      
-      // Also update the patients collection if it exists
+      // Get the patient document to preserve existing fields
       const patientDocRef = doc(db, 'patients', user.uid);
       const patientDoc = await getDoc(patientDocRef);
       
-      if (patientDoc.exists()) {
-        // Update patient document with the new profile data
-        await setDoc(patientDocRef, {
-          name: profile.displayName,
-          email: profile.email,
-          phone: profile.phoneNumber,
-          address: profile.address,
-          dateOfBirth: profile.dateOfBirth,
-          gender: profile.gender,
-          bloodType: profile.bloodGroup,
-          allergies: profile.allergies,
-          medicalHistory: profile.medicalHistory,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
+      // Get existing emergency contact if available
+      const existingData = patientDoc.exists() ? patientDoc.data() : {};
+      const emergencyContact = existingData.emergencyContact || '';
+      const createdAt = existingData.createdAt || new Date().toISOString();
+      
+      // Update patient document with the new profile data
+      await setDoc(patientDocRef, {
+        name: profile.displayName,
+        email: profile.email,
+        phone: profile.phoneNumber,
+        address: profile.address,
+        dateOfBirth: profile.dateOfBirth,
+        gender: profile.gender,
+        bloodType: profile.bloodGroup,
+        allergies: profile.allergies,
+        medicalHistory: profile.medicalHistory,
+        insuranceInfo: profile.insuranceInfo,
+        emergencyContact: emergencyContact,
+        createdAt: createdAt,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+      
+      console.log('Updated patient profile with insurance info:', profile.insuranceInfo);
       
       setSuccess('Profile updated successfully!');
       setTimeout(() => setSuccess(null), 5000);
@@ -249,6 +236,27 @@ const ProfilePage: React.FC = () => {
     } catch (err) {
       console.error('Error updating password:', err);
       setError(err instanceof Error ? err.message : 'Failed to update password. Please check your current password and try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle password reset email
+  const handleSendPasswordResetEmail = async () => {
+    if (!user || !user.email) return;
+    
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      setResetEmailSent(true);
+      setSuccess(`Password reset email sent to ${user.email}. Please check your inbox.`);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      console.error('Error sending password reset email:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send password reset email. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -462,6 +470,21 @@ const ProfilePage: React.FC = () => {
                 </div>
                 
                 <div className="md:col-span-2">
+                  <label htmlFor="insuranceInfo" className="block text-sm font-medium text-gray-700 mb-1">
+                    Insurance Information
+                  </label>
+                  <textarea
+                    id="insuranceInfo"
+                    name="insuranceInfo"
+                    value={profile.insuranceInfo}
+                    onChange={handleChange}
+                    rows={2}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Insurance provider, policy number, and other relevant details"
+                  ></textarea>
+                </div>
+                
+                <div className="md:col-span-2">
                   <label htmlFor="medicalHistory" className="block text-sm font-medium text-gray-700 mb-1">
                     Medical History
                   </label>
@@ -505,21 +528,74 @@ const ProfilePage: React.FC = () => {
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 className="text-lg font-semibold text-[#14396D] mb-2">Password Management</h3>
                 <p className="text-gray-600 text-sm">
-                  Change your password to keep your account secure. We recommend using a strong password that you don't use elsewhere.
+                  {isGoogleUser 
+                    ? 'You signed up with Google. To change your password, you need to set up an email/password account first.' 
+                    : 'Change your password to keep your account secure. We recommend using a strong password that you don\'t use elsewhere.'}
                 </p>
               </div>
               
-              {!showPasswordFields ? (
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => setShowPasswordFields(true)}
-                    className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 font-medium transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Change Password
-                  </button>
+              {isGoogleUser ? (
+                <div className="space-y-6">
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm text-yellow-700 font-medium">Google Account Notice</p>
+                        <p className="text-sm text-yellow-600 mt-1">
+                          Your account is currently linked to Google. Password management is handled through your Google account settings.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white border border-gray-200 rounded-lg p-5">
+                    <h4 className="font-medium text-gray-800 mb-3">Options for Google Users</h4>
+                    <ul className="space-y-3 text-sm text-gray-600">
+                      <li className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span>To change your Google account password, visit <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Account Security</a></span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span>You can also create a separate email/password login by signing out and registering with the same email address</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : !showPasswordFields ? (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button
+                      onClick={() => setShowPasswordFields(true)}
+                      className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 font-medium transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Change Password
+                    </button>
+                    
+                    <button
+                      onClick={handleSendPasswordResetEmail}
+                      disabled={saving || resetEmailSent}
+                      className={`bg-white border border-[#14396D] text-[#14396D] hover:bg-gray-50 rounded-lg px-6 py-3 font-medium transition-all duration-300 flex items-center justify-center ${(saving || resetEmailSent) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Send Reset Email
+                    </button>
+                  </div>
+                  
+                  <div className="text-center text-sm text-gray-500">
+                    <p>Forgot your password? Click "Send Reset Email" to receive a password reset link.</p>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handlePasswordSubmit}>
@@ -567,6 +643,10 @@ const ProfilePage: React.FC = () => {
                         required
                       />
                     </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-md mt-2">
+                      <p className="text-xs text-gray-500">Password must be at least 6 characters long and should include a mix of letters, numbers, and special characters for better security.</p>
+                    </div>
                   </div>
                   
                   <div className="mt-6 flex justify-end space-x-3">
@@ -599,6 +679,21 @@ const ProfilePage: React.FC = () => {
                       ) : (
                         'Update Password'
                       )}
+                    </button>
+                  </div>
+                  
+                  <div className="mt-4 text-center">
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setShowPasswordFields(false);
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      }}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Forgot your password? Use the reset option instead
                     </button>
                   </div>
                 </form>

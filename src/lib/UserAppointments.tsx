@@ -20,8 +20,54 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // No longer need action loading state
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Function to check and update appointment status based on time
+  const updateAppointmentStatusBasedOnTime = async (appointmentsList: Appointment[]) => {
+    const now = new Date();
+    const appointmentsToUpdate: { id: string, status: string }[] = [];
+    
+    // Check each appointment
+    appointmentsList.forEach(appointment => {
+      const appointmentDateTime = new Date(`${appointment.date} ${appointment.time}`);
+      
+      // If appointment time has passed and status is still 'scheduled', mark as 'completed'
+      if (appointmentDateTime < now && appointment.status === 'scheduled') {
+        appointmentsToUpdate.push({
+          id: appointment.id,
+          status: 'completed'
+        });
+      }
+    });
+    
+    // Update appointments in Firestore
+    const updatePromises = appointmentsToUpdate.map(async ({ id, status }) => {
+      const appointmentRef = doc(db, 'appointments', id);
+      await updateDoc(appointmentRef, {
+        status,
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Also update local state
+      setAppointments(prev => 
+        prev.map(appointment => 
+          appointment.id === id 
+            ? { ...appointment, status } 
+            : appointment
+        )
+      );
+    });
+    
+    if (updatePromises.length > 0) {
+      try {
+        await Promise.all(updatePromises);
+        console.log(`Updated ${updatePromises.length} appointments to 'completed' status`);
+      } catch (err) {
+        console.error('Error updating appointment statuses:', err);
+      }
+    }
+  };
 
   // Fetch user appointments
   useEffect(() => {
@@ -63,6 +109,9 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
           return dateB.getTime() - dateA.getTime();
         });
         
+        // Check and update appointment statuses based on time
+        await updateAppointmentStatusBasedOnTime(appointmentsList);
+        
         setAppointments(appointmentsList);
       } catch (err) {
         console.error('Error fetching appointments:', err);
@@ -79,7 +128,6 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
   const handleCancel = async (appointmentId: string) => {
     if (!confirm('Are you sure you want to cancel this appointment?')) return;
     
-    setActionLoading(appointmentId);
     setSuccessMessage(null);
     
     try {
@@ -103,15 +151,12 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
       console.error('Error cancelling appointment:', err);
       setError('Failed to cancel appointment. Please try again.');
     }
-    
-    setActionLoading(null);
   };
 
   // Handle appointment reschedule request
   const handleRescheduleRequest = async (appointmentId: string) => {
     if (!confirm('Are you sure you want to request a reschedule for this appointment?')) return;
     
-    setActionLoading(appointmentId);
     setSuccessMessage(null);
     
     try {
@@ -135,8 +180,6 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
       console.error('Error requesting reschedule:', err);
       setError('Failed to request reschedule. Please try again.');
     }
-    
-    setActionLoading(null);
   };
 
   // Format date for display
@@ -310,17 +353,15 @@ export default function UserAppointments({ onNewAppointment }: { onNewAppointmen
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => handleRescheduleRequest(appointment.id)}
-                        disabled={actionLoading === appointment.id}
-                        className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50"
+                        className="text-indigo-600 hover:text-indigo-900"
                       >
-                        {actionLoading === appointment.id ? 'Processing...' : 'Reschedule'}
+                        Reschedule
                       </button>
                       <button
                         onClick={() => handleCancel(appointment.id)}
-                        disabled={actionLoading === appointment.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        className="text-red-600 hover:text-red-900"
                       >
-                        {actionLoading === appointment.id ? 'Processing...' : 'Cancel'}
+                        Cancel
                       </button>
                     </div>
                   ) : (

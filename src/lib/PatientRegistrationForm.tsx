@@ -167,11 +167,27 @@ export default function PatientRegistrationForm() {
   };
   
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] bg-[#F6F8FB] px-2 sm:px-4 py-2 sm:py-10 w-full">
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 max-w-md w-full">
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#14396D] mb-4 sm:mb-6 text-center">
-          {step === 'credentials' ? 'Create your CareCoord Account' : 'Complete Your Patient Profile'}
-        </h1>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gray-50 px-4 sm:px-6 py-4 sm:py-12 w-full">
+      <div className="bg-white rounded-xl shadow-lg p-6 sm:p-10 max-w-md w-full border border-gray-100">
+        <div className="text-center mb-8">
+          <div className="inline-block bg-gradient-to-r from-[#3373FF] to-[#5D93FF] rounded-full p-2 mb-4 shadow-md">
+            {step === 'credentials' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            )}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
+            {step === 'credentials' ? 'Create Account' : 'Complete Your Profile'}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {step === 'credentials' ? 'Sign up to get started with CareCoord' : 'Tell us more about yourself to personalize your experience'}
+          </p>
+        </div>
         
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 text-red-700 text-sm">
@@ -182,60 +198,105 @@ export default function PatientRegistrationForm() {
         {/* Step 1: Account Credentials */}
         {step === 'credentials' && (
           <>
-            <form onSubmit={handleEmailPasswordSignup} className="space-y-3 sm:space-y-4">
+            <form onSubmit={handleEmailPasswordSignup} className="space-y-4 sm:space-y-5">
               <div>
-                <label className="block mb-1 font-medium text-sm">Email</label>
-                <input
-                  type="email"
-                  className="w-full border rounded px-3 py-2 sm:px-4 sm:py-2 focus:outline-[#FF3D71]"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                />
+                <label className="block mb-1.5 font-medium text-gray-700 text-sm">Email Address</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="email"
+                    className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-[#3373FF] focus:border-[#3373FF] outline-none transition-colors"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    required
+                  />
+                </div>
               </div>
+              
               <div>
-                <label className="block mb-1 font-medium text-sm">Password</label>
-                <input
-                  type="password"
-                  className="w-full border rounded px-3 py-2 sm:px-4 sm:py-2 focus:outline-[#FF3D71]"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                />
+                <label className="block mb-1.5 font-medium text-gray-700 text-sm">Password</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="password"
+                    className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-[#3373FF] focus:border-[#3373FF] outline-none transition-colors"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
               </div>
+              
               <div>
-                <label className="block mb-1 font-medium text-sm">Confirm Password</label>
-                <input
-                  type="password"
-                  className="w-full border rounded px-3 py-2 sm:px-4 sm:py-2 focus:outline-[#FF3D71]"
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  required
-                />
+                <label className="block mb-1.5 font-medium text-gray-700 text-sm">Confirm Password</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="password"
+                    className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-[#3373FF] focus:border-[#3373FF] outline-none transition-colors"
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
               </div>
+              
               <button
                 type="submit"
-                className="bg-[#FF3D71] hover:bg-[#ff5996] text-white font-semibold py-2 px-3 sm:px-4 rounded w-full mt-1 sm:mt-2 text-sm sm:text-base"
+                className="w-full bg-[#3373FF] hover:bg-[#2860e0] text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF] focus:outline-none mt-2"
                 disabled={loading}
               >
-                {loading ? 'Processing...' : 'Continue'}
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </div>
+                ) : 'Continue'}
               </button>
             </form>
             
-            <div className="my-3 sm:my-4 text-center text-xs sm:text-sm text-gray-500">OR</div>
+            <div className="relative flex items-center justify-center my-6">
+              <div className="border-t border-gray-200 w-full"></div>
+              <div className="absolute bg-white px-4 text-sm text-gray-500">OR</div>
+            </div>
             
             <button
-              className="w-full bg-white text-[#14396D] border hover:bg-[#F6F8FB] font-semibold py-2 px-3 sm:px-4 rounded flex items-center justify-center gap-2 mb-2 text-sm sm:text-base"
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 border border-gray-300 rounded-lg flex items-center justify-center gap-3 transition-colors shadow-sm"
               onClick={handleGoogleSignup}
               disabled={loading}
             >
-              <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" className="w-5 h-5" alt="Google logo" />
-              Continue with Google
+              <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+              </svg>
+              <span>Continue with Google</span>
             </button>
             
-            <div className="text-center mt-3 sm:mt-4 text-xs sm:text-sm">
+            <div className="text-center mt-6 text-sm text-gray-600">
               Already have an account?{' '}
-              <button onClick={() => navigate('/login')} className="text-[#3373FF] hover:underline font-semibold">
+              <button onClick={() => navigate('/login')} className="text-[#3373FF] hover:text-[#2860e0] font-medium transition-colors ml-1">
                 Sign in
               </button>
             </div>

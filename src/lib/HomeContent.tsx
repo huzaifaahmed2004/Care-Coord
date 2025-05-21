@@ -186,7 +186,7 @@ export default function HomeContent() {
   return (
     <main className="bg-[#F6F8FB] min-h-screen">
       {/* Hero Section with Image Slider */}
-      <section className="relative w-full h-[550px] md:h-[650px] overflow-hidden">
+      <section className="relative w-full h-[400px] md:h-[500px] overflow-hidden">
         <ImageSlider slides={heroSlides} interval={5000} />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -571,28 +571,7 @@ export default function HomeContent() {
         </div>
       </section>
 
-      {/* Call to Action Section */}
-      <section className="py-16 bg-gradient-to-r from-[#14396D] to-[#2C5078]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <div className="inline-block px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-[#FF3D71] font-semibold text-sm mb-4">HEALTHCARE MADE SIMPLE</div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Experience Better Healthcare?</h2>
-            <div className="w-24 h-1 bg-[#FF3D71] mx-auto mb-6"></div>
-            <p className="text-gray-200 max-w-2xl mx-auto text-lg mb-8">
-              Our dedicated team of healthcare professionals is ready to provide you with the best medical care available.  
-            </p>
-            <button 
-              className="bg-gradient-to-r from-[#FF3D71] to-[#ff5996] hover:from-[#ff5996] hover:to-[#FF3D71] text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-lg transition-all duration-300 inline-flex items-center justify-center"
-              onClick={handleAppointmentClick}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Book Your Appointment Now
-            </button>
-          </div>
-        </div>
-      </section>
+      {/* End of content */}
     </main>
   );
 }
