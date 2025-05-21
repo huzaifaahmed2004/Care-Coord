@@ -287,6 +287,9 @@ function MainHeader() {
 
 // Responsive AdminDashboard with new sidebar menu and mobile hamburger
 function AdminDashboard() {
+  const { logout } = useAuth() ?? {};
+  const navigate = useNavigate();
+  
   const [currentSection, setCurrentSection] = useState(() => {
     if (typeof window !== 'undefined' && window.location.hash) {
       const hash = window.location.hash.replace('#', '');
@@ -296,6 +299,25 @@ function AdminDashboard() {
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Clear admin session from localStorage
+      localStorage.removeItem('adminSession');
+      localStorage.removeItem('adminSessionExpires');
+      
+      // Also logout from Firebase if the logout function is available
+      if (logout) {
+        await logout();
+      }
+      
+      // Redirect to admin login page
+      window.location.href = '/admin';
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   // Sync URL hash with section
   useEffect(() => {
@@ -406,18 +428,28 @@ function AdminDashboard() {
               Earnings
             </li>
           </ul>
-          <div className="p-4 md:mt-4">
-          <Link
-            to="/"
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#427DFF] to-[#3373FF] rounded-lg text-white font-medium text-center hover:shadow-md transition-all"
-            onClick={() => setMenuOpen(false)}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
-            Main Website
-          </Link>
-        </div>
+          <div className="p-4 md:mt-4 space-y-3">
+            <Link
+              to="/"
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#427DFF] to-[#3373FF] rounded-lg text-white font-medium text-center hover:shadow-md transition-all"
+              onClick={() => setMenuOpen(false)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+              </svg>
+              Main Website
+            </Link>
+            
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg text-white font-medium text-center hover:shadow-md transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V7.414l-5-5H3zm7 5a1 1 0 10-2 0v4.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L12 12.586V8z" />
+              </svg>
+              Logout
+            </button>
+          </div>
         </nav>
 
        

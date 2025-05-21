@@ -6,6 +6,8 @@ import {
   doc,
   getDocs,
   updateDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { useEffect, useState, useRef } from "react";
 import { db } from "./firebase";
@@ -90,9 +92,41 @@ function DepartmentModal({
       
       setLoadingDoctors(true);
       try {
-        const snap = await getDocs(collection(db, "doctors"));
-        const doctorData = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Doctor));
-        setDoctors(doctorData);
+        // If we're editing an existing department, only fetch doctors from that department
+        if (department?.id) {
+          // Get doctors that belong to this department
+          const q = query(
+            collection(db, "doctors"),
+            where("departmentId", "==", department.id)
+          );
+          const snap = await getDocs(q);
+          const doctorData = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Doctor));
+          
+          // If the current head doctor is not in the filtered list, we need to fetch and add them
+          if (department.headDoctorId && !doctorData.some(d => d.id === department.headDoctorId)) {
+            try {
+              const headDoctorDoc = await getDocs(
+                query(collection(db, "doctors"), where("id", "==", department.headDoctorId))
+              );
+              if (!headDoctorDoc.empty) {
+                const headDoctorData = { 
+                  id: headDoctorDoc.docs[0].id, 
+                  ...headDoctorDoc.docs[0].data() 
+                } as Doctor;
+                doctorData.push(headDoctorData);
+              }
+            } catch (err) {
+              console.error('Error fetching head doctor:', err);
+            }
+          }
+          
+          setDoctors(doctorData);
+        } else {
+          // For new departments, show all doctors
+          const snap = await getDocs(collection(db, "doctors"));
+          const doctorData = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Doctor));
+          setDoctors(doctorData);
+        }
       } catch (e) {
         console.error('Error fetching doctors:', e);
       } finally {
@@ -100,7 +134,7 @@ function DepartmentModal({
       }
     }
     fetchDoctors();
-  }, [open]);
+  }, [open, department?.id, department?.headDoctorId]);
 
   useEffect(() => {
     // Reset state when modal is opened or department changes
@@ -315,6 +349,8 @@ function DepartmentModal({
               <option value="">Select a head doctor</option>
               {loadingDoctors ? (
                 <option disabled>Loading doctors...</option>
+              ) : doctors.length === 0 ? (
+                <option disabled>No doctors available for this department</option>
               ) : (
                 doctors.map(doctor => (
                   <option key={doctor.id} value={doctor.id}>

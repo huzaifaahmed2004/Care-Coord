@@ -251,7 +251,7 @@ const DoctorsPage: React.FC = () => {
                         selectedDoctor?.id === doctor.id 
                           ? 'border-[#FF3D71]' 
                           : 'border-gray-200'
-                      } cursor-pointer h-full max-w-xs mx-auto`}
+                      } cursor-pointer h-full w-full`}
                       onClick={() => handleDoctorClick(doctor)}
                     >
                       <div className="h-52 overflow-hidden relative">

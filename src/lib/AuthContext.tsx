@@ -10,6 +10,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   type User,
+  setPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
@@ -78,11 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('This email is registered as a doctor. Please use the doctor login page.');
     }
     
+    // Set session persistence (will be cleared when browser is closed)
+    await setPersistence(auth, browserSessionPersistence);
+    
     // Proceed with normal login for patients
     await signInWithEmailAndPassword(auth, email, password);
   };
 
   const loginWithGoogle = async (): Promise<User> => {
+    // Set session persistence (will be cleared when browser is closed)
+    await setPersistence(auth, browserSessionPersistence);
+    
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     
