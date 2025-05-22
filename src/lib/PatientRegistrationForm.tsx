@@ -50,10 +50,22 @@ export default function PatientRegistrationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Helper function to check if profile completion is required
+  const checkProfileCompletionRequired = () => {
+    // Check localStorage
+    const localStorageFlag = window.localStorage.getItem('forceProfileCompletion') === 'true';
+    
+    // Check cookies
+    const cookieFlag = document.cookie.split('; ')
+      .find(row => row.startsWith('forceProfileCompletion='))?.split('=')[1] === 'true';
+    
+    return localStorageFlag || cookieFlag;
+  };
+  
   // Check if user is already logged in but needs to complete profile
   useEffect(() => {
     // Check for the force profile completion flag
-    const forceProfileCompletion = window.localStorage.getItem('forceProfileCompletion') === 'true';
+    const forceProfileCompletion = checkProfileCompletionRequired();
     
     if (user) {
       console.log('User authenticated - checking profile status', 
@@ -79,7 +91,7 @@ export default function PatientRegistrationForm() {
   
   // Redirect to home if user is logged in and has completed profile
   useEffect(() => {
-    const forceProfileCompletion = window.localStorage.getItem('forceProfileCompletion') === 'true';
+    const forceProfileCompletion = checkProfileCompletionRequired();
     
     if (user && !isNewUser && !forceProfileCompletion) {
       console.log('User already has profile - redirecting to home');
@@ -186,7 +198,9 @@ export default function PatientRegistrationForm() {
       
       // Clear the force profile completion flag since profile is now complete
       window.localStorage.removeItem('forceProfileCompletion');
-      console.log('Profile saved successfully, cleared forceProfileCompletion flag');
+      // Also clear the cookie
+      document.cookie = 'forceProfileCompletion=; path=/; max-age=0';
+      console.log('Profile saved successfully, cleared forceProfileCompletion flags');
       
       // Navigate to home page
       navigate('/');

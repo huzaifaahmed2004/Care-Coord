@@ -62,14 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!hasProfile) {
           console.log('User needs to complete profile - setting isNewUser flag');
           setIsNewUser(true);
+          // Use sessionStorage instead of localStorage for better cross-device support
           window.localStorage.setItem('forceProfileCompletion', 'true');
+          // Also set a session cookie for better mobile support
+          document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
         } else {
           setIsNewUser(false);
           window.localStorage.removeItem('forceProfileCompletion');
+          // Clear the cookie as well
+          document.cookie = 'forceProfileCompletion=; path=/; max-age=0';
         }
       } else {
         setIsNewUser(false);
         window.localStorage.removeItem('forceProfileCompletion');
+        // Clear the cookie as well
+        document.cookie = 'forceProfileCompletion=; path=/; max-age=0';
       }
       
       setLoading(false);
@@ -127,12 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // This ensures Google sign-in users are properly directed to complete their profile
       if (!hasProfile) {
         setIsNewUser(true);
-        // Store a persistent flag to indicate this is a new user that needs to complete profile
+        // Store flags to indicate this is a new user that needs to complete profile
         window.localStorage.setItem('forceProfileCompletion', 'true');
+        // Also set a session cookie for better mobile support
+        document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
         console.log('Google login - New user detected, profile needed');
       } else {
         setIsNewUser(false);
         window.localStorage.removeItem('forceProfileCompletion');
+        // Clear the cookie as well
+        document.cookie = 'forceProfileCompletion=; path=/; max-age=0';
         console.log('Google login - Existing user with profile');
       }
     }
