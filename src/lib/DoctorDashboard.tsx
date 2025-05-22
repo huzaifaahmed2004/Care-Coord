@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 interface Appointment {
@@ -17,6 +17,9 @@ interface Appointment {
   reason: string;
   notes?: string;
   createdAt: string;
+  completedAt?: string;
+  completedBy?: string;
+  noShow?: boolean;
 }
 
 interface Doctor {
@@ -104,6 +107,62 @@ const DoctorDashboard: React.FC = () => {
     navigate('/doctor/login');
   };
 
+  // Check if appointment time has passed
+  const hasAppointmentTimePassed = (appointment: Appointment) => {
+    const appointmentDate = new Date(`${appointment.date}T${appointment.time}`);
+    const now = new Date();
+    return appointmentDate < now;
+  };
+  
+  // Update appointment status
+  const updateAppointmentStatus = async (appointmentId: string, newStatus: 'completed' | 'no-show') => {
+    try {
+      const appointmentRef = doc(db, 'appointments', appointmentId);
+      
+      // Define the update data with proper typing
+      type UpdateData = {
+        status: 'completed' | 'no-show';
+        updatedAt: string;
+        completedAt?: string;
+        completedBy?: string;
+        noShow?: boolean;
+      };
+      
+      const updateData: UpdateData = {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      if (newStatus === 'completed') {
+        updateData.completedAt = new Date().toISOString();
+        updateData.completedBy = doctor?.id || '';
+        updateData.noShow = false;
+      } else if (newStatus === 'no-show') {
+        updateData.completedAt = new Date().toISOString();
+        updateData.completedBy = doctor?.id || '';
+        updateData.noShow = true;
+      }
+      
+      await updateDoc(appointmentRef, updateData);
+      
+      // Update local state
+      setAppointments(prevAppointments => 
+        prevAppointments.map(apt => 
+          apt.id === appointmentId ? { ...apt, ...updateData } : apt
+        )
+      );
+      
+      // Update selected appointment if it's the one being modified
+      if (selectedAppointment && selectedAppointment.id === appointmentId) {
+        setSelectedAppointment(prev => prev ? { ...prev, ...updateData } : null);
+      }
+      
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      setError('Failed to update appointment status. Please try again.');
+    }
+  };
+  
   // Filter appointments based on active tab
   const filteredAppointments = appointments.filter(appointment => {
     const appointmentDate = new Date(`${appointment.date}T${appointment.time}`);
@@ -276,6 +335,8 @@ const DoctorDashboard: React.FC = () => {
                         appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        appointment.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                        appointment.status === 'no-show' ? 'bg-purple-100 text-purple-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
@@ -321,6 +382,8 @@ const DoctorDashboard: React.FC = () => {
                     selectedAppointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                     selectedAppointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                     selectedAppointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    selectedAppointment.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                    selectedAppointment.status === 'no-show' ? 'bg-purple-100 text-purple-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {selectedAppointment.status.charAt(0).toUpperCase() + selectedAppointment.status.slice(1)}
@@ -360,7 +423,62 @@ const DoctorDashboard: React.FC = () => {
                 )}
               </div>
               
-              <div className="mt-8 flex justify-end space-x-4">
+              <div className="mt-8 flex flex-wrap justify-between items-center gap-4">
+                {/* Status update buttons - only shown if appointment time has passed and status isn't already completed/no-show */}
+                {hasAppointmentTimePassed(selectedAppointment) && 
+                 !['completed', 'no-show'].includes(selectedAppointment.status) && (
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => updateAppointmentStatus(selectedAppointment.id, 'completed')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Mark as Completed
+                    </button>
+                    <button
+                      onClick={() => updateAppointmentStatus(selectedAppointment.id, 'no-show')}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Mark as No-Show
+                    </button>
+                  </div>
+                )}
+                
+                {/* Show message if appointment time hasn't passed yet */}
+                {!hasAppointmentTimePassed(selectedAppointment) && (
+                  <div className="text-sm text-gray-500 italic flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Appointment status can be updated after {formatDate(selectedAppointment.date)} at {formatTime(selectedAppointment.time)}
+                  </div>
+                )}
+                
+                {/* Show completed info if appointment is completed */}
+                {selectedAppointment.status === 'completed' && selectedAppointment.completedAt && (
+                  <div className="text-sm text-green-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Marked as completed on {new Date(selectedAppointment.completedAt).toLocaleString()}
+                  </div>
+                )}
+                
+                {/* Show no-show info if appointment is no-show */}
+                {selectedAppointment.status === 'no-show' && selectedAppointment.completedAt && (
+                  <div className="text-sm text-purple-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Marked as no-show on {new Date(selectedAppointment.completedAt).toLocaleString()}
+                  </div>
+                )}
+                
                 <button
                   onClick={() => setSelectedAppointment(null)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"

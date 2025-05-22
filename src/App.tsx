@@ -264,48 +264,82 @@ function MainHeader() {
           </div>
         </div>
         
-        {/* Mobile Navigation Drawer */}
+        {/* Mobile Navigation Drawer - Modern side drawer with backdrop */}
         {menuOpen && (
-          <nav className="absolute z-30 top-24 left-0 right-0 bg-gradient-to-r from-[#14396D] to-[#2C5078] border-y border-white/10 w-full flex flex-col items-start p-6 md:hidden drop-shadow-md">
-            <Link to="/" onClick={() => setMenuOpen(false)} className="py-2 w-full hover:text-[#FF3D71]">Home</Link>
-            <Link to="/departments" onClick={() => setMenuOpen(false)} className="py-2 w-full hover:text-[#FF3D71]">Departments</Link>
-            <Link to="/doctors" onClick={() => setMenuOpen(false)} className="py-2 w-full hover:text-[#FF3D71]">Doctors</Link>
-            <Link to="/about" onClick={() => setMenuOpen(false)} className="py-2 w-full hover:text-[#FF3D71]">About</Link>
-            <Link to="/contact" onClick={() => setMenuOpen(false)} className="py-2 w-full hover:text-[#FF3D71]">Contact</Link>
-            {user ? (
-              <Link to="/appointment" state={{ showForm: true }} onClick={() => setMenuOpen(false)} className="mt-2 py-2 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-semibold text-center">
-                Appointment
-              </Link>
-            ) : (
-              <button onClick={() => { setMenuOpen(false); navigate('/login', { state: { from: '/appointment', showForm: true } }); }} className="mt-2 py-2 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-semibold text-center">
-                Appointment
-              </button>
-            )}
+          <>
+            {/* Semi-transparent backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 md:hidden"
+              onClick={() => setMenuOpen(false)}
+            ></div>
             
-            {/* Mobile auth buttons */}
-            <div className="mt-4 pt-4 border-t border-white/10 w-full flex flex-col gap-2">
-              {!user && (
-                <>
-                  <button onClick={() => { setMenuOpen(false); navigate('/login'); }} className="py-2 w-full bg-white/10 hover:bg-white/20 rounded-md text-white font-semibold text-center">
-                    Login
+            {/* Side drawer */}
+            <nav className="fixed z-40 top-0 right-0 h-full w-64 bg-white/95 shadow-lg flex flex-col p-6 md:hidden overflow-y-auto transition-all duration-300 ease-in-out">
+              {/* Close button */}
+              <button 
+                onClick={() => setMenuOpen(false)} 
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* Logo */}
+              <div className="flex items-center mb-8 mt-2">
+                <div className="bg-gradient-to-r from-[#3373FF] to-[#5D93FF] rounded-full p-1.5 flex items-center justify-center w-8 h-8 shadow-sm">
+                  <span className="text-white text-sm font-bold">CC</span>
+                </div>
+                <span className="ml-2 font-bold text-gray-800">CARECOORD</span>
+              </div>
+              
+              {/* Navigation links */}
+              <div className="flex flex-col space-y-1">
+                <Link to="/" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">Home</Link>
+                <Link to="/departments" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">Departments</Link>
+                <Link to="/doctors" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">Doctors</Link>
+                <Link to="/about" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">About</Link>
+                <Link to="/contact" onClick={() => setMenuOpen(false)} className="py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">Contact</Link>
+              </div>
+              
+              {/* Appointment button */}
+              <div className="mt-6">
+                {user ? (
+                  <Link to="/appointment" state={{ showForm: true }} onClick={() => setMenuOpen(false)} className="block py-2.5 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-medium text-center shadow-sm">
+                    Book Appointment
+                  </Link>
+                ) : (
+                  <button onClick={() => { setMenuOpen(false); navigate('/login', { state: { from: '/appointment', showForm: true } }); }} className="py-2.5 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-medium text-center shadow-sm">
+                    Book Appointment
                   </button>
-                  <button onClick={() => { setMenuOpen(false); navigate('/register'); }} className="py-2 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-semibold text-center">
-                    Sign Up
-                  </button>
-                </>
-              )}
-              {user && (
-                <>
-                  <div className="py-2 w-full bg-white/10 rounded-md text-white text-center mb-2">
-                    Hello{user.displayName ? `, ${user.displayName}` : user.email ? `, ${user.email}` : ''}
-                  </div>
-                  <button onClick={() => { setMenuOpen(false); logout && logout(); }} className="py-2 w-full bg-[#FF3D71] hover:bg-[#ff5996] rounded-md text-white font-semibold text-center">
-                    Logout
-                  </button>
-                </>
-              )}
-            </div>
-          </nav>
+                )}
+              </div>
+              
+              {/* Auth buttons */}
+              <div className="mt-auto pt-6 border-t border-gray-200 w-full flex flex-col gap-2">
+                {!user && (
+                  <>
+                    <button onClick={() => { setMenuOpen(false); navigate('/login'); }} className="py-2 w-full border border-gray-300 hover:bg-gray-50 rounded-md text-gray-700 font-medium text-center">
+                      Login
+                    </button>
+                    <button onClick={() => { setMenuOpen(false); navigate('/register'); }} className="py-2 w-full bg-[#3373FF] hover:bg-[#2860e0] rounded-md text-white font-medium text-center shadow-sm">
+                      Sign Up
+                    </button>
+                  </>
+                )}
+                {user && (
+                  <>
+                    <div className="py-2 w-full bg-gray-50 rounded-md text-gray-700 text-center mb-2">
+                      Hello{user.displayName ? `, ${user.displayName}` : user.email ? `, ${user.email}` : ''}
+                    </div>
+                    <button onClick={() => { setMenuOpen(false); logout && logout(); }} className="py-2 w-full border border-red-300 text-red-600 hover:bg-red-50 rounded-md font-medium text-center">
+                      Sign Out
+                    </button>
+                  </>
+                )}
+              </div>
+            </nav>
+          </>
         )}
       </div>
     </header>
