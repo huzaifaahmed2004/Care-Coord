@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FirebaseError } from 'firebase/app';
-import { collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './AuthContext';
 
@@ -29,7 +29,7 @@ export default function BookAppointmentForm() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
-  const [baseAppointmentFee, setBaseAppointmentFee] = useState(1000);
+  const [baseAppointmentFee, setBaseAppointmentFee] = useState(0);
   
   // Form fields
   const [formData, setFormData] = useState({
@@ -53,13 +53,28 @@ export default function BookAppointmentForm() {
   const [error, setError] = useState<string | null>(null);
   const [calculatedFee, setCalculatedFee] = useState(0);
   
-  // Fetch doctors and departments
+  // Fetch doctors, departments, and global settings
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       setError(null);
       
       try {
+        // Fetch base appointment fee from global settings
+        const globalDocRef = doc(db, 'global', 'baseAppointmentFee');
+        const globalDoc = await getDoc(globalDocRef);
+        
+        if (globalDoc.exists()) {
+          // Use the fee from the global document
+          const fee = globalDoc.data()?.value || 1200; // Default to 1200 if value field doesn't exist
+          console.log('Fetched base appointment fee from global settings:', fee);
+          setBaseAppointmentFee(fee);
+        } else {
+          // Fallback to 1200 if the document doesn't exist
+          console.log('Global settings document not found, using default fee');
+          setBaseAppointmentFee(1200);
+        }
+        
         // Fetch departments
         const departmentsQuery = query(collection(db, 'departments'));
         const departmentSnapshot = await getDocs(departmentsQuery);
@@ -117,7 +132,7 @@ export default function BookAppointmentForm() {
   
   // Calculate fee when doctor or department changes
   useEffect(() => {
-    if (formData.doctorId && formData.departmentId) {
+    if (formData.doctorId && formData.departmentId && baseAppointmentFee > 0) {
       const doctor = doctors.find(d => d.id === formData.doctorId);
       const department = departments.find(d => d.id === formData.departmentId);
       

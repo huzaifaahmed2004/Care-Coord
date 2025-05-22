@@ -5,6 +5,7 @@ import {
   doc,
   getDocs,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "./firebase";
@@ -63,6 +64,7 @@ function AppointmentModal({
 }) {
   // State to store departments for fee calculation
   const [departments, setDepartments] = useState<any[]>([]);
+  const [baseAppointmentFee, setBaseAppointmentFee] = useState<number>(1200); // Default to 1200
   const [form, setForm] = useState<Appointment>(
     appointment || {
       patientId: "",
@@ -86,10 +88,26 @@ function AppointmentModal({
 
   const [saving, setSaving] = useState(false);
 
-  // Fetch departments for fee calculation
+  // Fetch departments and global settings for fee calculation
   useEffect(() => {
-    async function fetchDepartments() {
+    async function fetchData() {
       try {
+        // Fetch base appointment fee from global settings
+        const globalDocRef = doc(db, 'global', 'baseAppointmentFee');
+        const globalDoc = await getDoc(globalDocRef);
+        
+        if (globalDoc.exists()) {
+          // Use the fee from the global document
+          const fee = globalDoc.data()?.value || 1200; // Default to 1200 if value field doesn't exist
+          console.log('Fetched base appointment fee from global settings:', fee);
+          setBaseAppointmentFee(fee);
+        } else {
+          // Fallback to 1200 if the document doesn't exist
+          console.log('Global settings document not found, using default fee');
+          setBaseAppointmentFee(1200);
+        }
+
+        // Fetch departments
         const departmentsSnap = await getDocs(collection(db, "departments"));
         const departmentsData = departmentsSnap.docs.map((d) => ({ 
           id: d.id, 
@@ -97,10 +115,10 @@ function AppointmentModal({
         }));
         setDepartments(departmentsData);
       } catch (e) {
-        console.error('Error fetching departments:', e);
+        console.error('Error fetching data:', e);
       }
     }
-    fetchDepartments();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -122,8 +140,8 @@ function AppointmentModal({
         status: "scheduled",
         notes: "",
         createdAt: new Date().toISOString(),
-        baseFee: 1000, // Default base fee is 1000 Rs
-        totalFee: 1000, // Default total fee starts at base fee
+        baseFee: baseAppointmentFee, // Base fee from global settings
+        totalFee: baseAppointmentFee, // Default total fee starts at base fee
         paymentStatus: "paid", // All appointments are automatically paid
         paymentDate: new Date().toISOString().split("T")[0],
       });
@@ -361,7 +379,7 @@ function AppointmentModal({
                   Base Fee (Rs)
                 </label>
                 <div className="w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-gray-700">
-                  Rs. {form.baseFee || 1000}
+                  Rs. {form.baseFee || baseAppointmentFee}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Appointment base fee (before doctor and department percentages)</p>
               </div>
@@ -372,7 +390,7 @@ function AppointmentModal({
                   Total Fee (Rs)
                 </label>
                 <div className="w-full border border-gray-300 bg-gray-50 rounded-lg px-3 py-2 text-gray-700">
-                  Rs. {form.totalFee || form.baseFee || 1000}
+                  Rs. {form.totalFee || form.baseFee || baseAppointmentFee}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Total fee including doctor ({doctors.find(d => d.id === form.doctorId)?.feePercentage || 0}%) 
@@ -381,8 +399,8 @@ function AppointmentModal({
               </div>
               
               {/* Hidden fields to maintain the values */}
-              <input type="hidden" name="baseFee" value={form.baseFee || 1000} />
-              <input type="hidden" name="totalFee" value={form.totalFee || form.baseFee || 1000} />
+              <input type="hidden" name="baseFee" value={form.baseFee || baseAppointmentFee} />
+              <input type="hidden" name="totalFee" value={form.totalFee || form.baseFee || baseAppointmentFee} />
               
               {/* Payment status is always paid and hidden from the UI */}
               <input type="hidden" name="paymentStatus" value="paid" />
