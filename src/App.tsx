@@ -15,9 +15,12 @@ import HomeContent from './lib/HomeContent';
 import AppointmentPage from './lib/AppointmentPage';
 import AppointmentsAdmin from './lib/AppointmentsAdmin';
 import DepartmentsPage from './lib/DepartmentsPage';
+import LaboratoryPage from './lib/LaboratoryPage';
 import DoctorsPage from './lib/DoctorsPage';
 import ContactPage from './lib/ContactPage';
 import ProfilePage from './lib/ProfilePage';
+import LabOperatorLogin from './lib/LabOperatorLogin';
+import LabOperatorPage from './lib/LabOperatorPage';
 import About from './lib/About';
 import Footer from './lib/Footer';
 import EarningsAdmin from './lib/EarningsAdmin';
@@ -27,6 +30,7 @@ import DoctorDashboard from './lib/DoctorDashboard';
 import DoctorProtectedRoute from './lib/DoctorProtectedRoute';
 import AdminNotifications from './lib/AdminNotifications';
 import AdminDashboardHome from './lib/AdminDashboardHome';
+import MigrateLabTests from './lib/MigrateLabTests';
 
 // Responsive MainHeader with burger menu
 function MainHeader() {
@@ -165,6 +169,7 @@ function MainHeader() {
               <Link to="/" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">Home</Link>
               <Link to="/departments" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">Departments</Link>
               <Link to="/doctors" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">Doctors</Link>
+              <Link to="/laboratory" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">Laboratory</Link>
               <Link to="/about" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">About</Link>
               <Link to="/contact" className="font-medium text-gray-700 hover:text-[#3373FF] transition-colors py-2 border-b-2 border-transparent hover:border-[#3373FF]">Contact</Link>
               {user ? (
@@ -873,11 +878,13 @@ export default function App() {
                     <Route path="/login" element={<LoginForm />} />
                     <Route path="/register" element={<PatientRegistrationForm />} />
                     <Route path="/appointment" element={<AppointmentPage />} />
+                    <Route path="/laboratory" element={<LaboratoryPage />} />
                     <Route path="/departments" element={<DepartmentsPage />} />
                     <Route path="/doctors" element={<DoctorsPage />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    {/* Lab Operator routes are moved to a separate route structure below */}
                     {/* Add more public routes here */}
                   </Routes>
                   <Footer />
@@ -897,6 +904,15 @@ export default function App() {
                 </DoctorProtectedRoute>
               } 
             />
+            
+            {/* Lab Operator Portal Routes - No Header/Footer */}
+            <Route path="/LabOperator/*" element={
+              <Routes>
+                <Route path="login" element={<LabOperatorLogin />} />
+                <Route path="migrate" element={<MigrateLabTests />} />
+                <Route path="/*" element={<LabOperatorPage />} />
+              </Routes>
+            } />
           </Routes>
         </Router>
       </SettingsProvider>

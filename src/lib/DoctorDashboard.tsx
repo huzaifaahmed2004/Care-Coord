@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import PatientMedicalHistory from './PatientMedicalHistory';
 
 interface Appointment {
   id: string;
@@ -38,6 +39,8 @@ const DoctorDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const [showPatientHistory, setShowPatientHistory] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const navigate = useNavigate();
 
@@ -257,6 +260,8 @@ const DoctorDashboard: React.FC = () => {
                 </div>
               )}
               
+
+              
               <button 
                 onClick={handleLogout}
                 className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -278,6 +283,12 @@ const DoctorDashboard: React.FC = () => {
           
           {/* Tabs */}
           <div className="flex border-b border-gray-200">
+          <button
+              className={`px-6 py-3 font-medium text-sm ${activeTab === 'all' ? 'text-[#14396D] border-b-2 border-[#14396D]' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All
+            </button>
             <button
               className={`px-6 py-3 font-medium text-sm ${activeTab === 'upcoming' ? 'text-[#14396D] border-b-2 border-[#14396D]' : 'text-gray-500 hover:text-gray-700'}`}
               onClick={() => setActiveTab('upcoming')}
@@ -290,16 +301,13 @@ const DoctorDashboard: React.FC = () => {
             >
               Past
             </button>
-            <button
-              className={`px-6 py-3 font-medium text-sm ${activeTab === 'all' ? 'text-[#14396D] border-b-2 border-[#14396D]' : 'text-gray-500 hover:text-gray-700'}`}
-              onClick={() => setActiveTab('all')}
-            >
-              All
-            </button>
+            
+
           </div>
           
-          {/* Appointments List */}
-          <div className="p-6">
+          {/* Always show appointments list */}
+         
+            <div className="p-6">
             {filteredAppointments.length === 0 ? (
               <div className="text-center py-12">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -318,7 +326,10 @@ const DoctorDashboard: React.FC = () => {
                   <div 
                     key={appointment.id} 
                     className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedAppointment(appointment)}
+                    onClick={() => {
+                      setSelectedAppointment(appointment);
+                      setSelectedPatientId(appointment.patientId);
+                    }}
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -352,6 +363,32 @@ const DoctorDashboard: React.FC = () => {
           </div>
         </div>
       </main>
+      
+      {/* Patient History Modal */}
+      {showPatientHistory && selectedPatientId && doctor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-bold text-gray-900">Patient Medical History</h3>
+              <button 
+                onClick={() => {
+                  setShowPatientHistory(false);
+                  setSelectedPatientId(null);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <PatientMedicalHistory doctorId={doctor.id || ''} patientId={selectedPatientId} />
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Appointment Details Modal */}
       {selectedAppointment && (
@@ -423,7 +460,24 @@ const DoctorDashboard: React.FC = () => {
                 )}
               </div>
               
-              <div className="mt-8 flex flex-wrap justify-between items-center gap-4">
+              {/* View Patient History Button */}
+              <div className="mt-6 w-full">
+                <button
+                  onClick={() => {
+                    setShowPatientHistory(true);
+                    setSelectedPatientId(selectedAppointment.patientId);
+                    setSelectedAppointment(null);
+                  }}
+                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  View Patient Medical History
+                </button>
+              </div>
+              
+              <div className="mt-4 flex flex-wrap justify-between items-center gap-4">
                 {/* Status update buttons - only shown if appointment time has passed and status isn't already completed/no-show */}
                 {hasAppointmentTimePassed(selectedAppointment) && 
                  !['completed', 'no-show'].includes(selectedAppointment.status) && (

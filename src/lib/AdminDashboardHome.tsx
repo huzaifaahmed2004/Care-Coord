@@ -47,14 +47,46 @@ ChartJS.register(
   Filler
 );
 
+interface LabTest {
+  id: string;
+  tests: Array<{
+    id: string;
+    name: string;
+    price: number;
+  }>;
+  date: string;
+  time: string;
+  status: string;
+  totalPrice: number;
+  createdAt: string;
+  patientId?: string;
+  patientName?: string;
+  patientEmail?: string;
+}
+
+interface EarningsData {
+  totalEarnings: number;
+  appointmentEarnings: number;
+  labTestEarnings: number;
+  monthlyEarnings: {
+    month: string;
+    appointmentEarnings: number;
+    labTestEarnings: number;
+    totalEarnings: number;
+  }[];
+}
+
 interface DashboardStats {
   totalPatients: number;
   totalDoctors: number;
   totalAppointments: number;
+  totalLabTests: number;
   scheduledAppointments: number;
   completedAppointments: number;
   cancelledAppointments: number;
   recentAppointments: Appointment[];
+  recentLabTests: LabTest[];
+  earningsData: EarningsData;
   patientGrowthData: {
     labels: string[];
     datasets: {
@@ -104,10 +136,18 @@ const AdminDashboardHome: React.FC = () => {
     totalPatients: 0,
     totalDoctors: 0,
     totalAppointments: 0,
+    totalLabTests: 0,
     scheduledAppointments: 0,
     completedAppointments: 0,
     cancelledAppointments: 0,
     recentAppointments: [],
+    recentLabTests: [],
+    earningsData: {
+      totalEarnings: 0,
+      appointmentEarnings: 0,
+      labTestEarnings: 0,
+      monthlyEarnings: []
+    },
     patientGrowthData: {
       labels: [],
       datasets: [{
@@ -203,6 +243,29 @@ const AdminDashboardHome: React.FC = () => {
         const completedAppointments = appointments.filter(app => app.status === 'completed').length;
         const cancelledAppointments = appointments.filter(app => app.status === 'cancelled').length;
         
+        // Fetch lab tests
+        const labTestsQuery = query(collection(db, 'labTests'));
+        const labTestsSnapshot = await getDocs(labTestsQuery);
+        const totalLabTests = labTestsSnapshot.size;
+        
+        // Get lab test data
+        const labTests = labTestsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as LabTest[];
+        
+        // Get recent lab tests
+        const recentLabTestsQuery = query(
+          collection(db, 'labTests'),
+          orderBy('createdAt', 'desc'),
+          limit(5)
+        );
+        const recentLabTestsSnapshot = await getDocs(recentLabTestsQuery);
+        const recentLabTests = recentLabTestsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as LabTest[];
+        
         // Recent appointments
         const recentAppointmentsQuery = query(
           collection(db, 'appointments'),
@@ -252,15 +315,76 @@ const AdminDashboardHome: React.FC = () => {
           }).length;
         });
         
+        // Calculate earnings data
+        // For this example, we'll assume each appointment costs $50
+        const appointmentPrice = 50;
+        const appointmentEarnings = completedAppointments * appointmentPrice;
+        
+        // Calculate lab test earnings
+        const labTestEarnings = labTests.reduce((total, test) => {
+          // Only count completed tests
+          if (test.status === 'completed') {
+            return total + (test.totalPrice || 0);
+          }
+          return total;
+        }, 0);
+        
+        // Calculate total earnings
+        const totalEarnings = appointmentEarnings + labTestEarnings;
+        
+        // Calculate monthly earnings
+        const last6MonthsData = getLast6Months();
+        const monthlyEarnings = last6MonthsData.map(month => {
+          const monthStr = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+          
+          // Calculate appointment earnings for this month
+          const monthAppointments = appointments.filter(app => {
+            const appDate = new Date(app.date);
+            return appDate.getMonth() === month.getMonth() && 
+                   appDate.getFullYear() === month.getFullYear() &&
+                   app.status === 'completed';
+          });
+          const monthAppointmentEarnings = monthAppointments.length * appointmentPrice;
+          
+          // Calculate lab test earnings for this month
+          const monthLabTests = labTests.filter(test => {
+            const testDate = new Date(test.date);
+            return testDate.getMonth() === month.getMonth() && 
+                   testDate.getFullYear() === month.getFullYear() &&
+                   test.status === 'completed';
+          });
+          const monthLabTestEarnings = monthLabTests.reduce((total, test) => {
+            return total + (test.totalPrice || 0);
+          }, 0);
+          
+          // Total monthly earnings
+          const monthTotalEarnings = monthAppointmentEarnings + monthLabTestEarnings;
+          
+          return {
+            month: month.toLocaleString('default', { month: 'short' }) + ' ' + month.getFullYear(),
+            appointmentEarnings: monthAppointmentEarnings,
+            labTestEarnings: monthLabTestEarnings,
+            totalEarnings: monthTotalEarnings
+          };
+        });
+        
         // Update state with all fetched data
         setStats({
           totalPatients,
           totalDoctors,
           totalAppointments,
+          totalLabTests,
           scheduledAppointments,
           completedAppointments,
           cancelledAppointments,
           recentAppointments,
+          recentLabTests,
+          earningsData: {
+            totalEarnings,
+            appointmentEarnings,
+            labTestEarnings,
+            monthlyEarnings
+          },
           patientGrowthData: {
             labels: last6Months.map(date => `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`),
             datasets: [{
@@ -459,22 +583,24 @@ const AdminDashboardHome: React.FC = () => {
         
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-medium">Scheduled Appointments</h3>
-            <div className="p-2 rounded-full bg-yellow-50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            <h3 className="text-gray-500 text-sm font-medium">Total Lab Tests</h3>
+            <div className="p-2 rounded-full bg-purple-50">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.769 2.156 18 4.828 18h10.343c2.673 0 4.012-3.231 2.122-5.121l-4-4A1 1 0 0113 8.172V4.414l.707-.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.563-.187a1.993 1.993 0 00-.114-.035l1.063-1.063A3 3 0 009 8.172z" clipRule="evenodd" />
               </svg>
             </div>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{stats.scheduledAppointments}</div>
-          <div className="text-sm text-yellow-500 mt-2 flex items-center">
+          <div className="text-3xl font-bold text-gray-800">{stats.totalLabTests}</div>
+          <div className="text-sm text-purple-500 mt-2 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
             </svg>
-            Upcoming visits
+            Laboratory services
           </div>
         </div>
       </div>
+      
+
       
       {/* Charts - First Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -584,60 +710,144 @@ const AdminDashboardHome: React.FC = () => {
         </div>
       </div>
       
-      {/* Recent Appointments */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Appointments</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Patient
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Doctor
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {stats.recentAppointments.length > 0 ? (
-                stats.recentAppointments.map((appointment: Appointment) => (
-                  <tr key={appointment.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{appointment.patientName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{appointment.doctorName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDate(appointment.date)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                      </span>
-                    </td>
+      {/* Recent Appointments and Lab Tests - Stacked Vertically */}
+      <div className="flex flex-col gap-8 mb-8">
+        {/* Recent Appointments */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Appointments</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No recent appointments found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {stats.recentAppointments.length > 0 ? (
+                    stats.recentAppointments.map((appointment) => (
+                      <tr key={appointment.id} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{appointment.patientName}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{appointment.doctorName}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{formatDate(appointment.date)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            appointment.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            appointment.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No recent appointments found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+              <div className="flex-1 flex justify-between">
+                <button className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Previous
+                </button>
+                <button className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  Next
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Recent Lab Tests */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Lab Tests</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tests</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.recentLabTests.length > 0 ? (
+                    stats.recentLabTests.map((test) => (
+                      <tr key={test.id} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{test.patientName || 'Patient'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{formatDate(test.date)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{test.tests.length} tests</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">Rs {test.totalPrice.toLocaleString()}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            test.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                            test.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {test.status.charAt(0).toUpperCase() + test.status.slice(1)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No recent lab tests found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50">
+              <div className="flex-1 flex justify-between">
+                <button className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Previous
+                </button>
+                <button className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  Next
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

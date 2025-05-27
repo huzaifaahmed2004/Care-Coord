@@ -493,11 +493,17 @@ function DepartmentModal({
 // --- Main DepartmentsAdmin Component ---
 export default function DepartmentsAdmin() {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selected, setSelected] = useState<Department | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [locations, setLocations] = useState<string[]>([]);
 
   // Load departments
   useEffect(() => {
@@ -505,9 +511,13 @@ export default function DepartmentsAdmin() {
       setLoading(true);
       try {
         const snap = await getDocs(collection(db, "departments"));
-        setDepartments(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() } as Department))
-        );
+        const departmentsList = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Department));
+        setDepartments(departmentsList);
+        setFilteredDepartments(departmentsList);
+        
+        // Extract unique locations
+        const uniqueLocations = Array.from(new Set(departmentsList.map(dept => dept.location)));
+        setLocations(uniqueLocations);
       } catch (e) {
         console.error('Error fetching departments:', e);
         setError('Failed to load departments.');
@@ -517,6 +527,31 @@ export default function DepartmentsAdmin() {
     }
     fetchDepartments();
   }, []);
+  
+  // Filter departments based on search term and filters
+  useEffect(() => {
+    if (!departments.length) return;
+    
+    let filtered = [...departments];
+    
+    // Apply search term filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(dept => 
+        dept.name.toLowerCase().includes(term) || 
+        dept.description.toLowerCase().includes(term) || 
+        dept.headDoctor.toLowerCase().includes(term) ||
+        dept.contactEmail.toLowerCase().includes(term)
+      );
+    }
+    
+    // Apply location filter
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(dept => dept.location === locationFilter);
+    }
+    
+    setFilteredDepartments(filtered);
+  }, [departments, searchTerm, locationFilter]);
 
   // Add new department
   async function handleAdd(deptData: Department) {
@@ -538,7 +573,19 @@ export default function DepartmentsAdmin() {
         ...deptData,
       };
 
-      setDepartments(prev => [...prev, newDepartment]);
+      const updatedDepartments = [...departments, newDepartment];
+      setDepartments(updatedDepartments);
+      
+      // Update locations list if a new location is added
+      if (!locations.includes(deptData.location)) {
+        setLocations([...locations, deptData.location]);
+      }
+      
+      // Update filtered departments if it should be included in the current filter
+      if (locationFilter === 'all' || locationFilter === deptData.location) {
+        setFilteredDepartments(prev => [...prev, newDepartment]);
+      }
+      
       setModalOpen(false);
     } catch (e: unknown) {
       console.error("Error in handleAdd:", e);
@@ -576,10 +623,37 @@ export default function DepartmentsAdmin() {
       });
       console.log("Department updated in Firestore");
 
-      // Update local state
-      setDepartments(prev => prev.map(d =>
+      // Get the old department data before updating
+      const oldDept = departments.find(d => d.id === id);
+      
+      // Update departments list
+      const updatedDepartments = departments.map(d =>
         d.id === id ? { ...d, ...deptData } : d
-      ));
+      );
+      setDepartments(updatedDepartments);
+      
+      // Update locations list if a new location is added
+      if (oldDept && oldDept.location !== deptData.location && !locations.includes(deptData.location)) {
+        setLocations([...locations, deptData.location]);
+      }
+      
+      // Update filtered departments
+      setFilteredDepartments(prev => {
+        // If the department is in the filtered list, update it
+        if (prev.some(d => d.id === id)) {
+          // Check if it should still be in the filtered list after update
+          if (locationFilter === 'all' || locationFilter === deptData.location) {
+            return prev.map(d => d.id === id ? { ...d, ...deptData } : d);
+          } else {
+            // It no longer matches the filter, remove it
+            return prev.filter(d => d.id !== id);
+          }
+        } else if (locationFilter === 'all' || locationFilter === deptData.location) {
+          // It wasn't in the list before but now matches the filter, add it
+          return [...prev, { id, ...deptData }];
+        }
+        return prev;
+      });
 
       setModalOpen(false);
     } catch (e: unknown) {
@@ -602,11 +676,28 @@ export default function DepartmentsAdmin() {
     setSaving(true);
     setError(null);
     try {
+      // Get the department before deleting to check if we need to update locations
+      const departmentToDelete = departments.find(d => d.id === deptId);
+      
       // Delete the document from Firestore
       await deleteDoc(doc(collection(db, "departments"), deptId));
 
-      // Update the local state
-      setDepartments((departments) => departments.filter((d) => d.id !== deptId));
+      // Update the departments list
+      const updatedDepartments = departments.filter(d => d.id !== deptId);
+      setDepartments(updatedDepartments);
+      
+      // Update filtered departments list
+      setFilteredDepartments(prev => prev.filter(d => d.id !== deptId));
+      
+      // Update locations list if this was the last department with this location
+      if (departmentToDelete) {
+        const location = departmentToDelete.location;
+        const isLocationStillUsed = updatedDepartments.some(d => d.location === location);
+        
+        if (!isLocationStillUsed) {
+          setLocations(prev => prev.filter(loc => loc !== location));
+        }
+      }
     } catch (e: unknown) {
       const errorMessage =
         e instanceof FirebaseError
@@ -631,11 +722,56 @@ export default function DepartmentsAdmin() {
 
       {/* Content Container */}
       <div className="max-w-7xl mx-auto">
+        {/* Search and Filter Bar */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search Input */}
+            <div className="col-span-1 md:col-span-2">
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search Departments</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  name="search"
+                  id="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Search by name, description, or head doctor"
+                />
+              </div>
+            </div>
+            
+            {/* Location Filter */}
+            <div>
+              <label htmlFor="location-filter" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <select
+                id="location-filter"
+                name="location-filter"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              >
+                <option value="all">All Locations</option>
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        
         {/* Action Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <div className="flex items-center gap-2">
             <span className="text-gray-700 font-medium">
-              {departments.length} {departments.length === 1 ? 'Department' : 'Departments'}
+              {filteredDepartments.length} {filteredDepartments.length === 1 ? 'Department' : 'Departments'} {filteredDepartments.length !== departments.length && `(filtered from ${departments.length})`}
             </span>
           </div>
           <button
@@ -673,7 +809,7 @@ export default function DepartmentsAdmin() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - No departments at all */}
         {!loading && departments.length === 0 && (
           <div className="flex flex-col justify-center items-center h-64 w-full bg-white rounded-xl shadow-sm p-8 border border-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -695,11 +831,34 @@ export default function DepartmentsAdmin() {
             </button>
           </div>
         )}
+        
+        {/* Empty State - No departments match filters */}
+        {!loading && departments.length > 0 && filteredDepartments.length === 0 && (
+          <div className="flex flex-col justify-center items-center h-64 w-full bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-700 mb-1">No matching departments found</h3>
+            <p className="text-gray-500 mb-4 text-center">Try adjusting your search or filters</p>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setLocationFilter('all');
+              }}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-5 py-2.5 transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+              Reset Filters
+            </button>
+          </div>
+        )}
 
         {/* Card Grid Layout */}
-        {!loading && departments.length > 0 && (
+        {!loading && filteredDepartments.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {departments.map((dept) => (
+            {filteredDepartments.map((dept) => (
               <div
                 key={dept.id}
                 className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 hover:border-indigo-200 cursor-pointer transform hover:-translate-y-1"

@@ -489,6 +489,7 @@ function DoctorModal({
 
 export default function DoctorsAdmin() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selected, setSelected] = useState<Doctor | null>(null);
@@ -496,25 +497,72 @@ export default function DoctorsAdmin() {
   const [saving, setSaving] = useState<boolean>(false);
   // For future sidebar details
   const [showDetail, setShowDetail] = useState<Doctor | null>(null);
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [specialtyFilter, setSpecialtyFilter] = useState<string>('all');
+  const [specialties, setSpecialties] = useState<string[]>([]);
 
-  // Load doctors
+  // Load doctors and departments
   useEffect(() => {
-    async function fetchDocs() {
+    async function fetchData() {
       setLoading(true);
       try {
-        const snap = await getDocs(collection(db, "doctors"));
-        setDoctors(
-          snap.docs.map((d) => ({ id: d.id, ...d.data() } as Doctor))
+        // Fetch doctors
+        const doctorsSnap = await getDocs(collection(db, "doctors"));
+        const doctorsList = doctorsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Doctor));
+        setDoctors(doctorsList);
+        setFilteredDoctors(doctorsList);
+        
+        // Extract unique specialties
+        const uniqueSpecialties = Array.from(new Set(doctorsList.map(doc => doc.speciality)));
+        setSpecialties(uniqueSpecialties);
+        
+        // Fetch departments
+        const departmentsSnap = await getDocs(collection(db, "departments"));
+        setDepartments(
+          departmentsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Department))
         );
       } catch (e) {
-        console.error('Error fetching doctors:', e);
-        setError('Failed to load doctors.');
+        console.error('Error fetching data:', e);
+        setError('Failed to load data.');
       } finally {
         setLoading(false);
       }
     }
-    fetchDocs();
+    fetchData();
   }, []);
+  
+  // Filter doctors based on search term and filters
+  useEffect(() => {
+    if (!doctors.length) return;
+    
+    let filtered = [...doctors];
+    
+    // Apply search term filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(doc => 
+        doc.name.toLowerCase().includes(term) || 
+        doc.speciality.toLowerCase().includes(term) || 
+        doc.email.toLowerCase().includes(term)
+      );
+    }
+    
+    // Apply department filter
+    if (selectedDepartment !== 'all') {
+      filtered = filtered.filter(doc => doc.departmentId === selectedDepartment);
+    }
+    
+    // Apply specialty filter
+    if (specialtyFilter !== 'all') {
+      filtered = filtered.filter(doc => doc.speciality === specialtyFilter);
+    }
+    
+    setFilteredDoctors(filtered);
+  }, [doctors, searchTerm, selectedDepartment, specialtyFilter]);
 
   // Add new doctor (Firestore+FirebaseAuth)
   async function handleAdd(docData: Doctor, email: string, password: string) {
@@ -717,11 +765,75 @@ export default function DoctorsAdmin() {
 
       {/* Content Container */}
       <div className="max-w-7xl mx-auto">
+        {/* Search and Filter Bar */}
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search Input */}
+            <div className="col-span-1 md:col-span-2">
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search Doctors</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  name="search"
+                  id="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Search by name, specialty, or email"
+                />
+              </div>
+            </div>
+            
+            {/* Department Filter */}
+            <div>
+              <label htmlFor="department-filter" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <select
+                id="department-filter"
+                name="department-filter"
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              >
+                <option value="all">All Departments</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Specialty Filter */}
+            <div>
+              <label htmlFor="specialty-filter" className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
+              <select
+                id="specialty-filter"
+                name="specialty-filter"
+                value={specialtyFilter}
+                onChange={(e) => setSpecialtyFilter(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              >
+                <option value="all">All Specialties</option>
+                {specialties.map((specialty) => (
+                  <option key={specialty} value={specialty}>
+                    {specialty}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        
         {/* Action Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <div className="flex items-center gap-2">
             <span className="text-gray-700 font-medium">
-              {doctors.length} {doctors.length === 1 ? 'Doctor' : 'Doctors'}
+              {filteredDoctors.length} {filteredDoctors.length === 1 ? 'Doctor' : 'Doctors'} {filteredDoctors.length !== doctors.length && `(filtered from ${doctors.length})`}
             </span>
           </div>
           <button
@@ -761,9 +873,9 @@ export default function DoctorsAdmin() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - No doctors at all */}
         {!loading && doctors.length === 0 && (
-          <div className="flex flex-col justify-center items-center h-64 w-full bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+          <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg shadow-sm border border-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -774,7 +886,7 @@ export default function DoctorsAdmin() {
                 setSelected(null);
                 setModalOpen(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-5 py-2.5 transition-colors duration-200 flex items-center gap-2"
+              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-5 py-2.5 transition-colors duration-200 flex items-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
@@ -783,11 +895,35 @@ export default function DoctorsAdmin() {
             </button>
           </div>
         )}
+        
+        {/* Empty State - No doctors after filtering */}
+        {!loading && doctors.length > 0 && filteredDoctors.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg shadow-sm border border-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-700 mb-1">No matching doctors found</h3>
+            <p className="text-gray-500 mb-4 text-center">Try adjusting your search or filters</p>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedDepartment('all');
+                setSpecialtyFilter('all');
+              }}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg px-5 py-2.5 transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+              Reset Filters
+            </button>
+          </div>
+        )}
 
         {/* Card Grid Layout */}
-        {!loading && doctors.length > 0 && (
+        {!loading && filteredDoctors.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {doctors.map((doc) => (
+            {filteredDoctors.map((doc) => (
               <div
                 key={doc.id}
                 className="bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 overflow-hidden max-w-md w-full mx-auto"

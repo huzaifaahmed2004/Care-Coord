@@ -200,23 +200,7 @@ export default function HomeContent() {
               <p className="text-gray-200 mb-8 text-base sm:text-lg max-w-lg">
                 {heroSlides[0].description}
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button 
-                  className="bg-[#FF3D71] hover:bg-[#ff5996] text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
-                  onClick={handleAppointmentClick}
-                >
-                  <span>Make an Appointment</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <a href="#services-section" className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 hover:bg-white/10 flex items-center justify-center">
-                  <span>Our Services</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                </a>
-              </div>
+              
             </div>
           </div>
         </div>
@@ -284,10 +268,10 @@ export default function HomeContent() {
               <div className="text-xs sm:text-sm uppercase mb-3 font-semibold text-[#FF3D71] bg-[#FFF0F4] px-3 py-1 rounded-full">Urgent Care</div>
               <p className="text-gray-600 mb-6">Get immediate support for emergencies. We have introduced the principle of family medicine. Contact our emergency line for urgent medical assistance.</p>
               <a 
-                href="tel:18007006200"
+                href="tel:+923130157916"
                 className="bg-gradient-to-r from-[#FF3D71] to-[#ff5996] hover:from-[#ff5996] hover:to-[#FF3D71] text-white rounded-lg px-6 py-3 mt-auto transition-all duration-300 shadow-md hover:shadow-lg w-full text-center font-semibold"
               >
-                Call: 1-800-700-6200
+                Call: +92 313 0157916
               </a>
             </div>
           </div>
@@ -481,90 +465,102 @@ export default function HomeContent() {
       </section>
 
       {/* Patient Testimonials Section */}
-      <section className="py-20 bg-[#F6F8FB]">
+      
+
+      {/* Laboratory Services */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="inline-block px-3 py-1 bg-white rounded-full text-[#FF3D71] font-semibold text-sm mb-4">PATIENT STORIES</div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#14396D] mb-6">What Our Patients Say</h2>
-            <div className="w-24 h-1 bg-[#FF3D71] mx-auto mb-6"></div>
-            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-              Read about the experiences of our patients and how our healthcare services have made a difference in their lives.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Laboratory Services</h2>
+            <p className="max-w-3xl mx-auto text-xl text-gray-600">Comprehensive laboratory services tailored to your needs</p>
           </div>
-          
-          <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            <div className="bg-white p-8 rounded-xl shadow-lg relative">
-              <div className="absolute -top-6 left-8 bg-[#FF3D71] w-12 h-12 rounded-full flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                </svg>
-              </div>
-              <div className="flex items-center mb-6 mt-4">
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Service 1 */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div className="p-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
                 </div>
-              </div>
-              <p className="text-gray-600 mb-6 italic">"The care I received at CareCoord was exceptional. The doctors were attentive, the staff was friendly, and the facilities were state-of-the-art. I couldn't have asked for better care."</p>
-              <div className="flex items-center">
-                <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=100&q=80" alt="Patient" className="w-12 h-12 rounded-full object-cover" />
-                <div className="ml-4">
-                  <h4 className="font-bold text-[#14396D]">Sarah Thompson</h4>
-                  <p className="text-sm text-gray-500">Cardiology Patient</p>
-                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Blood Tests</h3>
+                <p className="text-gray-600 mb-6">Schedule blood tests and access your test results securely online.</p>
+                <button 
+                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
+                >
+                  Book Blood Test
+                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-xl shadow-lg relative">
-              <div className="absolute -top-6 left-8 bg-[#FF3D71] w-12 h-12 rounded-full flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                </svg>
-              </div>
-              <div className="flex items-center mb-6 mt-4">
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+            {/* Service 2 */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div className="p-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                  </svg>
                 </div>
-              </div>
-              <p className="text-gray-600 mb-6 italic">"I was nervous about my procedure, but the team at CareCoord made me feel comfortable and informed every step of the way. The follow-up care has been amazing as well."</p>
-              <div className="flex items-center">
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Patient" className="w-12 h-12 rounded-full object-cover" />
-                <div className="ml-4">
-                  <h4 className="font-bold text-[#14396D]">Michael Johnson</h4>
-                  <p className="text-sm text-gray-500">Orthopedics Patient</p>
-                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Urine Tests</h3>
+                <p className="text-gray-600 mb-6">Schedule urine tests and access your test results securely online.</p>
+                <button 
+                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
+                >
+                  Book Urine Test
+                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-xl shadow-lg relative">
-              <div className="absolute -top-6 left-8 bg-[#FF3D71] w-12 h-12 rounded-full flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                </svg>
-              </div>
-              <div className="flex items-center mb-6 mt-4">
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+            {/* Service 3 */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div className="p-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                  </svg>
                 </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Imaging Tests</h3>
+                <p className="text-gray-600 mb-6">Schedule imaging tests and access your test results securely online.</p>
+                <button 
+                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
+                >
+                  Book Imaging Test
+                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
               </div>
-              <p className="text-gray-600 mb-6 italic">"As a parent, I was worried about my child's treatment, but the pediatric team at CareCoord was incredible. They made my child feel at ease and explained everything in a way we both could understand."</p>
-              <div className="flex items-center">
-                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" alt="Patient" className="w-12 h-12 rounded-full object-cover" />
-                <div className="ml-4">
-                  <h4 className="font-bold text-[#14396D]">Emily Rodriguez</h4>
-                  <p className="text-sm text-gray-500">Pediatrics Patient</p>
+            </div>
+
+            {/* Service 4 */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <div className="p-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                  </svg>
                 </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Other Tests</h3>
+                <p className="text-gray-600 mb-6">Schedule other tests and access your test results securely online.</p>
+                <button 
+                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
+                >
+                  Book Other Test
+                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
