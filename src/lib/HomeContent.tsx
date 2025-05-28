@@ -65,14 +65,28 @@ interface Doctor {
   feePercentage?: number;
 }
 
+interface LabTest {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  preparationInstructions?: string;
+  createdAt?: string;
+  category?: string;
+  duration?: string;
+  reportTime?: string;
+}
+
 export default function HomeContent() {
   const { user } = useAuth() ?? {};
   const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [loading, setLoading] = useState({
     departments: true,
-    doctors: true
+    doctors: true,
+    labTests: true
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +119,8 @@ export default function HomeContent() {
     }
     return defaultDepartmentImage;
   };
+  
+
 
   // Fetch departments from database
   useEffect(() => {
@@ -175,6 +191,54 @@ export default function HomeContent() {
     fetchDoctors();
   }, []);
 
+  // Default lab tests in case Firebase data is not available
+  const defaultLabTests: LabTest[] = [
+    
+  ];
+
+  // Fetch lab tests from database
+  useEffect(() => {
+    async function fetchLabTests() {
+      try {
+        // Try both 'labTests' and 'labtests' collections
+        let labTestsCollection = collection(db, 'availableLabTests');
+        let labTestsSnapshot = await getDocs(labTestsCollection);
+        
+       
+        // If we found lab tests in Firebase, use them
+        if (labTestsSnapshot.docs.length > 0) {
+          const labTestsList = labTestsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              name: data.name || 'Lab Test',
+              description: data.description || 'Laboratory test',
+              price: data.price || 0,
+              preparationInstructions: data.preparationInstructions || 'No special preparation required.',
+              createdAt: data.createdAt || '',
+              category: data.category || 'General',
+              duration: data.duration || '30 minutes',
+              reportTime: data.reportTime || '24 hours'
+            };
+          });
+          setLabTests(labTestsList);
+        } else {
+          // If no lab tests found in any collection, use default data
+          setLabTests(defaultLabTests);
+        }
+      } catch (err) {
+        console.error('Error fetching lab tests:', err);
+        setError('Failed to load lab tests');
+        // Use default data in case of error
+        setLabTests(defaultLabTests);
+      } finally {
+        setLoading(prev => ({ ...prev, labTests: false }));
+      }
+    }
+
+    fetchLabTests();
+  }, []);
+
   const handleAppointmentClick = () => {
     if (!user) {
       navigate('/login', { state: { from: '/appointment', showForm: true } });
@@ -239,21 +303,17 @@ export default function HomeContent() {
             <div className="bg-white rounded-xl shadow-lg py-10 px-6 flex flex-col items-center transition-all duration-300 hover:shadow-xl hover:transform hover:-translate-y-2 border border-gray-100">
               <div className="bg-gradient-to-r from-[#FF3D71] to-[#ff5996] p-5 rounded-full mb-6 shadow-md">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
               </div>
-              <h3 className="text-xl md:text-2xl font-bold mb-3 text-[#14396D]">Flexible Scheduling</h3>
-              <div className="text-xs sm:text-sm uppercase mb-3 font-semibold text-[#FF3D71] bg-[#FFF0F4] px-3 py-1 rounded-full">Working Hours</div>
-              <ul className="text-gray-600 mb-6 text-sm sm:text-base bg-[#F6F8FB] p-4 rounded-lg w-full">
-                <li className="mb-2 flex justify-between"><span>Mon - Wed:</span> <span className="font-bold text-[#14396D]">8:00 - 17:00</span></li>
-                <li className="mb-2 flex justify-between"><span>Thu - Fri:</span> <span className="font-bold text-[#14396D]">9:00 - 17:00</span></li>
-                <li className="flex justify-between"><span>Sat - Sun:</span> <span className="font-bold text-[#14396D]">10:00 - 17:00</span></li>
-              </ul>
+              <h3 className="text-xl md:text-2xl font-bold mb-3 text-[#14396D]">Laboratory Services</h3>
+              <div className="text-xs sm:text-sm uppercase mb-3 font-semibold text-[#FF3D71] bg-[#FFF0F4] px-3 py-1 rounded-full">Diagnostic Tests</div>
+              <p className="text-gray-600 mb-6">Comprehensive laboratory services with state-of-the-art equipment for accurate and timely test results. We offer a wide range of diagnostic tests.</p>
               <button 
                 className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 mt-auto transition-all duration-300 shadow-md hover:shadow-lg w-full"
-                onClick={handleAppointmentClick}
+                onClick={() => navigate('/laboratory', { state: { showForm: true } })}
               >
-                Check Availability
+                Book Lab Test
               </button>
             </div>
             
@@ -306,7 +366,7 @@ export default function HomeContent() {
                 autoPlay={true}
                 speed={3000}
                 infinite={true}
-                pauseOnHover={false}
+                pauseOnHover={true}
                 responsive={[
                   {
                     breakpoint: 1024,
@@ -393,7 +453,7 @@ export default function HomeContent() {
                 autoPlay={true}
                 speed={3000}
                 infinite={true}
-                pauseOnHover={false}
+                pauseOnHover={true}
                 responsive={[
                   {
                     breakpoint: 1024,
@@ -468,102 +528,81 @@ export default function HomeContent() {
       
 
       {/* Laboratory Services */}
-      <section className="py-16 bg-white">
+      <section id="lab-section" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Laboratory Services</h2>
-            <p className="max-w-3xl mx-auto text-xl text-gray-600">Comprehensive laboratory services tailored to your needs</p>
+            <div className="inline-block px-3 py-1 bg-[#F6F8FB] rounded-full text-[#FF3D71] font-semibold text-sm mb-4">DIAGNOSTIC SERVICES</div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#14396D] mb-6">Our Laboratory Services</h2>
+            <div className="w-24 h-1 bg-[#FF3D71] mx-auto mb-6"></div>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+              Comprehensive laboratory services with state-of-the-art equipment for accurate and timely test results.
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Service 1 */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="p-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Blood Tests</h3>
-                <p className="text-gray-600 mb-6">Schedule blood tests and access your test results securely online.</p>
-                <button 
-                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
-                >
-                  Book Blood Test
-                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </button>
-              </div>
+          
+          {loading.labTests ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FF3D71]"></div>
             </div>
-
-            {/* Service 2 */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="p-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Urine Tests</h3>
-                <p className="text-gray-600 mb-6">Schedule urine tests and access your test results securely online.</p>
-                <button 
-                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
-                >
-                  Book Urine Test
-                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </button>
-              </div>
+          ) : labTests.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No lab tests available at the moment.</p>
             </div>
-
-            {/* Service 3 */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="p-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Imaging Tests</h3>
-                <p className="text-gray-600 mb-6">Schedule imaging tests and access your test results securely online.</p>
-                <button 
-                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
-                >
-                  Book Imaging Test
-                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </button>
-              </div>
+          ) : (
+            <div className="px-4 py-4">
+              <Slider
+                slidesToShow={3}
+                slidesToScroll={1}
+                autoPlay={true}
+                speed={3000}
+                infinite={true}
+                pauseOnHover={true}
+                responsive={[
+                  {
+                    breakpoint: 1024,
+                    settings: {
+                      slidesToShow: 2,
+                      slidesToScroll: 1
+                    }
+                  },
+                  {
+                    breakpoint: 640,
+                    settings: {
+                      slidesToShow: 1,
+                      slidesToScroll: 1
+                    }
+                  }
+                ]}
+                className="mx-auto"
+              >
+                {labTests.map((lab) => (
+                  <div key={lab.id} className="bg-white rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl hover:transform hover:-translate-y-2 border border-gray-100 h-full flex flex-col">
+                    <div className="p-6 flex-grow flex flex-col">
+                      <div className="mb-2 flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-[#14396D]">{lab.name}</h3>
+                        <div className="bg-[#FF3D71] text-white px-3 py-1 rounded-full text-sm font-semibold">
+                          Rs. {lab.price}
+                        </div>
+                      </div>
+                      <p className="text-gray-600 mb-4 flex-grow">{lab.description}</p>
+                      <div className="mb-4 text-sm text-gray-500">
+                        <p><span className="font-semibold">Preparation:</span> {lab.preparationInstructions}</p>
+                        {lab.reportTime && <p><span className="font-semibold">Report Time:</span> {lab.reportTime}</p>}
+                      </div>
+                      <button 
+                        className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 w-full transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+                        onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Book This Test
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </Slider>
             </div>
-
-            {/* Service 4 */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className="p-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <svg className="w-8 h-8 text-[#3373FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Other Tests</h3>
-                <p className="text-gray-600 mb-6">Schedule other tests and access your test results securely online.</p>
-                <button 
-                  onClick={() => navigate('/laboratory', { state: { showForm: true } })}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF]"
-                >
-                  Book Other Test
-                  <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

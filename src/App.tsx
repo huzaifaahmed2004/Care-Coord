@@ -26,8 +26,10 @@ import Footer from './lib/Footer';
 import EarningsAdmin from './lib/EarningsAdmin';
 import PatientsAdmin from './lib/PatientsAdmin';
 import DoctorLogin from './lib/DoctorLogin';
+import MainSiteGuard from './lib/MainSiteGuard';
 import DoctorDashboard from './lib/DoctorDashboard';
 import DoctorProtectedRoute from './lib/DoctorProtectedRoute';
+import LabOperatorProtectedRoute from './lib/LabOperatorProtectedRoute';
 import AdminNotifications from './lib/AdminNotifications';
 import AdminDashboardHome from './lib/AdminDashboardHome';
 import MigrateLabTests from './lib/MigrateLabTests';
@@ -871,7 +873,7 @@ export default function App() {
             <Route
               path="*"
               element={
-                <>
+                <MainSiteGuard>
                   <MainHeader />
                   <Routes>
                     <Route path="/" element={<HomeContent />} />
@@ -888,7 +890,7 @@ export default function App() {
                     {/* Add more public routes here */}
                   </Routes>
                   <Footer />
-                </>
+                </MainSiteGuard>
               }
             />
             {/* Admin does not get header */}
@@ -909,8 +911,16 @@ export default function App() {
             <Route path="/LabOperator/*" element={
               <Routes>
                 <Route path="login" element={<LabOperatorLogin />} />
-                <Route path="migrate" element={<MigrateLabTests />} />
-                <Route path="/*" element={<LabOperatorPage />} />
+                <Route path="migrate" element={
+                  <LabOperatorProtectedRoute>
+                    <MigrateLabTests />
+                  </LabOperatorProtectedRoute>
+                } />
+                <Route path="/*" element={
+                  <LabOperatorProtectedRoute>
+                    <LabOperatorPage />
+                  </LabOperatorProtectedRoute>
+                } />
               </Routes>
             } />
           </Routes>

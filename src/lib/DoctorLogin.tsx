@@ -345,7 +345,20 @@ const DoctorLogin: React.FC = () => {
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-500">
-                <a href="/" className="text-blue-600 hover:underline">Return to main site</a>
+                <Link 
+                  to="/" 
+                  className="text-blue-600 hover:underline"
+                  onClick={() => {
+                    // Clear doctor session data before returning to main site
+                    localStorage.removeItem('doctorSession');
+                    localStorage.removeItem('doctorId');
+                    localStorage.removeItem('doctorEmail');
+                    // Sign out from Firebase auth
+                    auth.signOut();
+                  }}
+                >
+                  Return to main site
+                </Link>
               </div>
               <div className="text-xs text-gray-500">
                 © {new Date().getFullYear()} CareCoord

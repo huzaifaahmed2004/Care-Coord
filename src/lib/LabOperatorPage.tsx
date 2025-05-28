@@ -973,7 +973,19 @@ export default function LabOperatorPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('labOperatorSession');
+    localStorage.removeItem('labOperatorId');
+    localStorage.removeItem('labOperatorEmail');
     navigate('/LabOperator/login');
+  };
+  
+  const returnToMainSite = () => {
+    // Clear all lab operator session data
+    localStorage.removeItem('labOperatorSession');
+    localStorage.removeItem('labOperatorId');
+    localStorage.removeItem('labOperatorEmail');
+    
+    // Navigate to the main site
+    navigate('/');
   };
 
   return (

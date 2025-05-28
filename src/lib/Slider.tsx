@@ -130,12 +130,20 @@ const Slider: React.FC<SliderProps> = ({
   const handleMouseEnter = () => {
     if (pauseOnHover && autoPlay) {
       setIsPaused(true);
+      // Cancel any ongoing animation immediately
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
     }
   };
   
   const handleMouseLeave = () => {
     if (pauseOnHover && autoPlay) {
       setIsPaused(false);
+      // Restart animation immediately
+      lastTimeRef.current = 0;
+      animationRef.current = requestAnimationFrame(animate);
     }
   };
   

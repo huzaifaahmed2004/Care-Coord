@@ -40,9 +40,13 @@ const defaultDoctorImage = "https://images.unsplash.com/photo-1612349317150-e413
 
 const DepartmentsPage: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [locations, setLocations] = useState<string[]>([]);
 
   // Fetch departments and their doctors
   useEffect(() => {
@@ -71,6 +75,14 @@ const DepartmentsPage: React.FC = () => {
         );
 
         setDepartments(departmentsWithDoctors);
+        setFilteredDepartments(departmentsWithDoctors);
+        
+        // Extract unique locations
+        const allLocations = departmentsWithDoctors
+          .map(dept => dept.location)
+          .filter((location): location is string => !!location);
+        
+        setLocations([...new Set(allLocations)]);
         
         // If there are departments, select the first one by default
         if (departmentsWithDoctors.length > 0) {
@@ -86,6 +98,38 @@ const DepartmentsPage: React.FC = () => {
 
     fetchDepartmentsWithDoctors();
   }, []);
+
+  // Filter departments based on search term and location filter
+  useEffect(() => {
+    if (!departments.length) return;
+    
+    let filtered = [...departments];
+    
+    // Apply search term filter
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(dept => 
+        dept.name.toLowerCase().includes(term) || 
+        dept.location.toLowerCase().includes(term) || 
+        dept.headDoctor.toLowerCase().includes(term) ||
+        dept.description.toLowerCase().includes(term) ||
+        dept.contactEmail.toLowerCase().includes(term)
+      );
+    }
+    
+    // Apply location filter
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(dept => dept.location === locationFilter);
+    }
+    
+    setFilteredDepartments(filtered);
+    
+    // If we have filtered results and the currently selected department is not in the filtered list
+    // select the first department from the filtered list
+    if (filtered.length > 0 && selectedDepartment && !filtered.some(dept => dept.id === selectedDepartment.id)) {
+      setSelectedDepartment(filtered[0]);
+    }
+  }, [departments, searchTerm, locationFilter, selectedDepartment]);
 
   // Handle department selection
   const handleDepartmentClick = (department: Department) => {
@@ -142,15 +186,89 @@ const DepartmentsPage: React.FC = () => {
 
       {!loading && departments.length > 0 && (
         <>
+          {/* Search and Filter Section */}
+          <section className="py-8 px-4 bg-white shadow-sm">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                {/* Search */}
+                <div className="w-full md:w-1/2">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search departments by name, location, or head doctor"
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-[#3373FF] focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button 
+                        onClick={() => setSearchTerm('')}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Location Filter */}
+                <div className="w-full md:w-1/2">
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3373FF] focus:border-transparent"
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                  >
+                    <option value="all">All Locations</option>
+                    {locations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+          
           {/* Departments List Section */}
           <section className="py-12 px-4">
             <div className="max-w-7xl mx-auto">
+              
               <h2 className="text-2xl md:text-3xl font-bold text-[#14396D] mb-8 text-center">
-                Browse Our Departments
+                {filteredDepartments.length > 0 
+                  ? `Our Medical Departments (${filteredDepartments.length})`
+                  : 'No departments match your search criteria'}
               </h2>
               
+              {/* No results after search */}
+              {filteredDepartments.length === 0 && (
+                <div className="bg-white rounded-xl shadow-md p-8 text-center mb-8 border border-gray-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No matching departments found</h3>
+                  <p className="text-gray-500 mb-4">Try adjusting your search criteria</p>
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setLocationFilter('all');
+                    }}
+                    className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-[#3373FF] hover:bg-[#2860e0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3373FF] transition-colors duration-200"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {departments.map((department) => (
+                {filteredDepartments.map((department) => (
                   <div 
                     key={department.id} 
                     className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border-2 ${
