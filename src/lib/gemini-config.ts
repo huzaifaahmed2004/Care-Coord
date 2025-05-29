@@ -1,36 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Declare the window.env property for TypeScript
-declare global {
-  interface Window {
-    env?: {
-      VITE_GEMINI_API_KEY?: string;
-      [key: string]: any;
-    };
-  }
-}
+// Get API key from environment variables
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// Get API key from environment variables with multiple fallback options
-const getApiKey = () => {
-  // Try different ways to access the environment variable
-  const viteEnvKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const windowEnvKey = window.env?.VITE_GEMINI_API_KEY;
-  const processEnvKey = typeof process !== 'undefined' ? process.env?.VITE_GEMINI_API_KEY : undefined;
-  
-  // Use the first available source
-  const API_KEY = viteEnvKey || windowEnvKey || processEnvKey;
-  
-  // Debug log to check if API key is loaded correctly (masked for security)
-  if (API_KEY) {
-    console.log('Gemini API Key loaded:', `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}`);
-  } else {
-    console.error('Gemini API Key not found! Please check your environment variables.');
-  }
-  
-  return API_KEY;
-};
-
-const API_KEY = getApiKey();
+// Debug log to check if API key is loaded correctly (masked for security)
+console.log('Gemini API Key loaded:', API_KEY ? `${API_KEY.substring(0, 4)}...${API_KEY.substring(API_KEY.length - 4)}` : 'Not found');
 
 // Initialize the API
 export const genAI = new GoogleGenerativeAI(API_KEY);
