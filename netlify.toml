@@ -4,6 +4,21 @@
 [build]
   command = "bun run build"
   publish = "dist"
+  # This ensures environment variables are available during build
+  environment = { NODE_VERSION = "18" }
+
+# Use our custom plugin to inject environment variables
+[[plugins]]
+  package = "./netlify-plugin-inject-env.js"
+
+# Process environment variables during build
+[build.processing.env]
+  # This makes Vite environment variables available to the client
+  NODE_ENV = "production"
+
+[context.production.environment]
+  # Add any production-specific environment variables here
+  VITE_PRODUCTION = "true"
 
 [[redirects]]
   from = "/*"
