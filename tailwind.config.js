@@ -6,6 +6,9 @@ module.exports = {
     extend: {
       animation: {
         'spin-slow': 'spin 3s linear infinite',
+        'slide-in': 'slide-in 0.3s ease-out',
+        'slide-out': 'slide-out 0.3s ease-in',
+        'fade-in': 'fade-in 0.3s ease-out',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -79,6 +82,30 @@ module.exports = {
           },
           to: {
             height: '0'
+          }
+        },
+        'slide-in': {
+          '0%': {
+            transform: 'translateY(100%)'
+          },
+          '100%': {
+            transform: 'translateY(0)'
+          }
+        },
+        'slide-out': {
+          '0%': {
+            transform: 'translateY(0)'
+          },
+          '100%': {
+            transform: 'translateY(100%)'
+          }
+        },
+        'fade-in': {
+          '0%': {
+            opacity: '0'
+          },
+          '100%': {
+            opacity: '1'
           }
         }
       },

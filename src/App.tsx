@@ -33,6 +33,7 @@ import LabOperatorProtectedRoute from './lib/LabOperatorProtectedRoute';
 import AdminNotifications from './lib/AdminNotifications';
 import AdminDashboardHome from './lib/AdminDashboardHome';
 import MigrateLabTests from './lib/MigrateLabTests';
+import HealthAssistant from './lib/HealthAssistant';
 
 // Responsive MainHeader with burger menu
 function MainHeader() {
@@ -890,6 +891,8 @@ export default function App() {
                     {/* Add more public routes here */}
                   </Routes>
                   <Footer />
+                  {/* Health Assistant Chat Widget */}
+                  <HealthAssistant />
                 </MainSiteGuard>
               }
             />
