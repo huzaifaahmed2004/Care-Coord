@@ -9,6 +9,16 @@ module.exports = {
         'slide-in': 'slide-in 0.3s ease-out',
         'slide-out': 'slide-out 0.3s ease-in',
         'fade-in': 'fade-in 0.3s ease-out',
+        'ping-slow': 'ping 3s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'rotate-glow': 'rotate-glow 6s linear infinite',
+        'rotate-glow-fast': 'rotate-glow 3s linear infinite',
+      },
+      keyframes: {
+        'rotate-glow': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

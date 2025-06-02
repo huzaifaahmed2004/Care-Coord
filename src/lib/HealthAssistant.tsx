@@ -37,6 +37,7 @@ const HealthAssistant: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth() ?? {};
   const [isOpen, setIsOpen] = useState(false);
+  const [showHelpBubble, setShowHelpBubble] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -85,6 +86,24 @@ const HealthAssistant: React.FC = () => {
   const isLoggedIn = (): boolean => {
     return user !== null && user !== undefined;
   };
+  
+  // Show help bubble after a delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isOpen) {
+        setShowHelpBubble(true);
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+  
+  // Hide help bubble when chat is opened
+  useEffect(() => {
+    if (isOpen) {
+      setShowHelpBubble(false);
+    }
+  }, [isOpen]);
   
   // Function to schedule a lab test in the database
   const scheduleLabTest = async (selectedTestIds: string[], dateStr: string, timeStr: string, specialInstructions: string) => {
@@ -1555,24 +1574,66 @@ const HealthAssistant: React.FC = () => {
       {/* Chat Button */}
       <button
         onClick={toggleChat}
-        className="bg-gradient-to-r from-[#14396D] to-[#2C5078] w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-all duration-300 relative"
+        className="hover:scale-105 transition-all duration-300 relative group"
         aria-label="Open health assistant chat"
       >
         {!isOpen ? (
           <>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <div className="relative">
+              {/* Outer pulsing ring */}
+              <div className="absolute -inset-3 rounded-full bg-blue-500 opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-700 animate-ping-slow"></div>
+              {/* Second pulsing ring with different timing */}
+              <div className="absolute -inset-2 rounded-full bg-blue-600 opacity-15 blur-lg animate-pulse-slow"></div>
+              {/* Inner glow */}
+              <div className="absolute inset-0 rounded-full bg-blue-400 opacity-40 blur-md animate-pulse group-hover:opacity-60 group-hover:scale-110 transition-all duration-500"></div>
+              {/* Shadow effect */}
+              <div className="absolute inset-0 rounded-full shadow-xl shadow-blue-400 animate-pulse"></div>
+              {/* Rotating highlight effect */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-blue-300 to-transparent opacity-20 group-hover:opacity-40 animate-rotate-glow"></div>
+              {/* Contrasting edge */}
+              <div className="absolute -inset-1 rounded-full border-2 border-blue-500 opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
+              {/* Main image with hover animation */}
+              <img 
+                src="/images/Chat bot Icon.png" 
+                alt="AI Health Assistant" 
+                className="relative h-16 w-16 object-cover rounded-full shadow-lg z-10 group-hover:rotate-6 transition-transform duration-300" 
+              />
+            </div>
             {unreadCount > 0 && (
               <div className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
                 {unreadCount}
               </div>
             )}
+            
+            {/* Help Message Bubble */}
+            {showHelpBubble && (
+              <div className="absolute -top-16 -left-32 bg-white rounded-xl shadow-lg p-3 w-48 animate-fade-in z-20">
+                <div className="relative">
+                  <p className="text-sm font-medium text-[#14396D]">Hello! Need any help?</p>
+                  <p className="text-xs text-gray-500 mt-1">I'm your AI health assistant</p>
+                  <div className="absolute -bottom-7 right-2 w-4 h-4 bg-white transform rotate-45"></div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowHelpBubble(false);
+                    }}
+                    className="absolute top-0 right-0 text-gray-400 hover:text-gray-600"
+                    aria-label="Close help message"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <div className="bg-white rounded-full p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#14396D]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
         )}
       </button>
       
@@ -1583,14 +1644,19 @@ const HealthAssistant: React.FC = () => {
           <div className="bg-gradient-to-r from-[#14396D] to-[#2C5078] px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="bg-white/20 p-2 rounded-full mr-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                <div className="relative mr-3">
+                  <div className="absolute -inset-1 rounded-full bg-blue-500 opacity-30 blur-md animate-pulse-slow"></div>
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-blue-300 to-transparent opacity-25 animate-rotate-glow-fast"></div>
+                  <div className="absolute inset-0 rounded-full border border-blue-500 opacity-40"></div>
+                  <img 
+                    src="/images/Chat bot Icon.png" 
+                    alt="AI Health Assistant" 
+                    className="relative h-10 w-10 object-cover rounded-full shadow-md z-10 hover:rotate-6 transition-transform duration-300" 
+                  />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-white">Health Assistant</h3>
-                  <p className="text-xs text-white/70">Powered by Google Gemini AI</p>
+                  <h3 className="text-base font-semibold text-white">AI Health Assistant</h3>
+                  <p className="text-xs text-white/70">Powered by Google Gemini</p>
                 </div>
               </div>
               <button 
