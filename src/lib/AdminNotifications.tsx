@@ -320,10 +320,13 @@ const AdminNotifications: React.FC = () => {
               {selectedNotification.type === 'contact_message' ? (
                 <button
                   onClick={() => {
-                    // Open default email client with pre-filled email
+                    // Open Gmail with pre-filled email data
                     const subject = encodeURIComponent(`Re: ${selectedNotification.subject || 'Your message to CareCoord'}`);
                     const body = encodeURIComponent(`Dear ${selectedNotification.userName},\n\nThank you for contacting CareCoord. We received your message:\n\n"${selectedNotification.message}"\n\n`);
-                    window.location.href = `mailto:${selectedNotification.userEmail}?subject=${subject}&body=${body}`;
+                    
+                    // Use Gmail-specific URL format
+                    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${selectedNotification.userEmail}&su=${subject}&body=${body}`;
+                    window.open(gmailUrl, '_blank');
                     
                     // Mark as responded
                     (async () => {
@@ -341,7 +344,7 @@ const AdminNotifications: React.FC = () => {
                   }}
                   className="px-4 py-2 bg-blue-600 rounded-md text-white hover:bg-blue-700"
                 >
-                  Send Email Response
+                  Respond via Gmail
                 </button>
               ) : selectedNotification.status === 'pending' && (
                 <>
