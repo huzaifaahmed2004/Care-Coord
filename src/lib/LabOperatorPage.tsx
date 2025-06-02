@@ -304,12 +304,21 @@ const ScheduledTestItem: React.FC<{
                 <div className="mt-2">
                   <button
                     onClick={() => {
-                      // Create a temporary link to open the base64 data
+                      // Create a temporary link to download the base64 data
                       const link = document.createElement('a');
                       link.href = test.reportData || '';
-                      link.target = '_blank';
-                      link.rel = 'noopener noreferrer';
+                      
+                      // Set download attribute with filename if available
+                      if (test.reportMetadata?.fileName) {
+                        link.download = test.reportMetadata.fileName;
+                      } else {
+                        link.download = `Lab_Report_${test.patientName.replace(/\s+/g, '_')}.pdf`;
+                      }
+                      
+                      // Append to document, click, and remove
+                      document.body.appendChild(link);
                       link.click();
+                      document.body.removeChild(link);
                     }}
                     className="block w-full text-center py-2 px-4 bg-green-500/20 text-white border border-green-500/30 rounded-md hover:bg-green-500/30 transition-all"
                   >
@@ -318,7 +327,7 @@ const ScheduledTestItem: React.FC<{
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      View Uploaded Report
+                      Download Report
                     </div>
                   </button>
                   {test.reportMetadata && (
