@@ -10,6 +10,10 @@ interface Message {
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
+  richContent?: {
+    type: 'department-cards' | 'lab-test-cards' | 'doctor-cards';
+    items: Department[] | LabTest[] | Doctor[];
+  };
 }
 
 interface Doctor {
@@ -17,6 +21,7 @@ interface Doctor {
   name: string;
   department: string;
   availability?: string;
+  specialization?: string;
 }
 
 interface Department {
@@ -501,10 +506,16 @@ const HealthAssistant: React.FC = () => {
     const navigationPath = detectNavigationIntent(userInput);
     const lowerInput = userInput.toLowerCase();
     
-    // Check for booking intent
-    const isAppointmentRequest = lowerInput.includes('appointment') || 
-                               (lowerInput.includes('book') && !lowerInput.includes('test')) || 
-                               lowerInput.includes('schedule appointment');
+    // Check for booking intent - with fuzzy matching for misspellings
+    const isAppointmentRequest = 
+      // Exact matches
+      lowerInput.includes('appointment') || 
+      (lowerInput.includes('book') && !lowerInput.includes('test')) || 
+      lowerInput.includes('schedule appointment') ||
+      // Fuzzy matches for common misspellings
+      /appo?in?tme?n?t/.test(lowerInput) || 
+      (lowerInput.includes('book') && lowerInput.includes('doctor')) ||
+      lowerInput.includes('schedul') && /doc?t[eo]r/.test(lowerInput);
                                
     // Only consider 'doctor' if it's clearly about booking with a doctor
     const isDoctorMention = lowerInput.includes('doctor') && 
@@ -565,24 +576,41 @@ const HealthAssistant: React.FC = () => {
         
         // For a general appointment request ("make an appointment"), always show departments first
         if (isAppointmentRequest && !selectedDoctor && !selectedDepartment) {
-          let response = `I can help you book an appointment. First, which department do you need?\n\n`;
+          // Instead of returning a text response, we'll add a message with department cards
+          // and return an empty string to prevent the default text response
           
-          // List all departments from the database
+          // Prepare department items
+          let deptItems: Department[] = [];
+          
           if (departments.length > 0) {
-            departments.forEach(dept => {
-              response += `- ${dept.name}${dept.description ? ` (${dept.description})` : ''}\n`;
-            });
+            deptItems = departments;
           } else {
             // Fallback if no departments are found
-            response += `- Cardiology (heart-related issues)\n` +
-                       `- Neurology (brain and nervous system)\n` +
-                       `- Pediatrics (children's health)\n` +
-                       `- Orthopedics (bone and joint issues)\n` +
-                       `- Dermatology (skin conditions)\n`;
+            deptItems = [
+              { id: 'cardiology', name: 'Cardiology', description: 'Heart-related issues' },
+              { id: 'neurology', name: 'Neurology', description: 'Brain and nervous system' },
+              { id: 'pediatrics', name: 'Pediatrics', description: 'Children\'s health' },
+              { id: 'orthopedics', name: 'Orthopedics', description: 'Bone and joint issues' },
+              { id: 'dermatology', name: 'Dermatology', description: 'Skin conditions' }
+            ];
           }
           
-          response += '\nPlease select a department, and I\'ll show you the available doctors.';
-          return response;
+          // Create and add the department cards message
+          const departmentMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: `To book an appointment, which department do you need?`,
+            sender: 'assistant',
+            timestamp: new Date(),
+            richContent: {
+              type: 'department-cards',
+              items: deptItems
+            }
+          };
+          
+          setMessages(prev => [...prev, departmentMessage]);
+          
+          // Return empty string to prevent default text response
+          return '';
         }
         // If the user has selected a specific doctor or wants to proceed to booking
         else if (selectedDoctor || lowerInput.includes('make appointment now')) {
@@ -613,24 +641,38 @@ const HealthAssistant: React.FC = () => {
         } 
         // Default case - show department list
         else {
-          let response = `I can help you book an appointment. First, which department do you need?\n\n`;
+          // Use department cards instead of text list
+          let deptItems: Department[] = [];
           
-          // List all departments from the database
           if (departments.length > 0) {
-            departments.forEach(dept => {
-              response += `- ${dept.name}${dept.description ? ` (${dept.description})` : ''}\n`;
-            });
+            deptItems = departments;
           } else {
             // Fallback if no departments are found
-            response += `- Cardiology (heart-related issues)\n` +
-                       `- Neurology (brain and nervous system)\n` +
-                       `- Pediatrics (children's health)\n` +
-                       `- Orthopedics (bone and joint issues)\n` +
-                       `- Dermatology (skin conditions)\n`;
+            deptItems = [
+              { id: 'cardiology', name: 'Cardiology', description: 'Heart-related issues' },
+              { id: 'neurology', name: 'Neurology', description: 'Brain and nervous system' },
+              { id: 'pediatrics', name: 'Pediatrics', description: 'Children\'s health' },
+              { id: 'orthopedics', name: 'Orthopedics', description: 'Bone and joint issues' },
+              { id: 'dermatology', name: 'Dermatology', description: 'Skin conditions' }
+            ];
           }
           
-          response += '\nPlease select a department, and I\'ll show you the available doctors.';
-          return response;
+          // Create and add the department cards message
+          const departmentMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: `To book an appointment, which department do you need?`,
+            sender: 'assistant',
+            timestamp: new Date(),
+            richContent: {
+              type: 'department-cards',
+              items: deptItems
+            }
+          };
+          
+          setMessages(prev => [...prev, departmentMessage]);
+          
+          // Return empty string to prevent default text response
+          return '';
         }
       }
     }
@@ -888,7 +930,7 @@ const HealthAssistant: React.FC = () => {
         
         const dateMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: `I'll help you schedule a ${selectedTestNames.join(', ')}. What date would you prefer for your lab test? (e.g., tomorrow, next Monday, June 15th)`,
+          text: `I'll help you schedule a ${selectedTestNames.join(', ')}. What date would you prefer for your lab test? Please provide the date in YYYY-MM-DD format (e.g., 2025-06-04 for tomorrow).`,
           sender: 'assistant',
           timestamp: new Date(),
         };
@@ -899,28 +941,31 @@ const HealthAssistant: React.FC = () => {
       }
     }
     
-    // User is logged in, show available lab tests
-    let testsList = '';
+    // User is logged in, show available lab tests with cards
+    let testItems: LabTest[] = [];
+    
     if (labTests.length > 0) {
-      testsList = 'Available Lab Tests:\n\n';
-      labTests.forEach((test, index) => {
-        testsList += `${index + 1}. ${test.name}${test.description ? ` (${test.description})` : ''}${test.price ? ` - Rs. ${test.price}` : ''}\n\n`;
-      });
+      testItems = labTests;
     } else {
       // Fallback if no lab tests are found
-      testsList = 'Available Lab Tests:\n\n' +
-                 `1. Complete Blood Count (CBC)\n\n` +
-                 `2. Lipid Profile\n\n` +
-                 `3. Blood Glucose Test\n\n` +
-                 `4. Liver Function Test (LFT)\n\n` +
-                 `5. Kidney Function Test (RFT)\n\n`;
+      testItems = [
+        { id: 'cbc', name: 'Complete Blood Count (CBC)', description: 'Evaluates overall health and detects disorders' },
+        { id: 'lipid', name: 'Lipid Profile', description: 'Measures cholesterol and triglycerides' },
+        { id: 'glucose', name: 'Blood Glucose Test', description: 'Measures blood sugar levels' },
+        { id: 'lft', name: 'Liver Function Test (LFT)', description: 'Evaluates liver function and health' },
+        { id: 'rft', name: 'Kidney Function Test (RFT)', description: 'Assesses kidney function and health' }
+      ];
     }
     
     const labTestsMessage: Message = {
       id: (Date.now() + 1).toString(),
-      text: `I can help you schedule a lab test. Here are the available tests:\n\n${testsList}\nPlease let me know which test(s) you'd like to schedule by name or number. You can select multiple tests by listing them.`,
+      text: `I can help you schedule a lab test. Please select from the available tests below:`,
       sender: 'assistant',
       timestamp: new Date(),
+      richContent: {
+        type: 'lab-test-cards',
+        items: testItems
+      }
     };
     
     setMessages(prev => [...prev, labTestsMessage]);
@@ -958,28 +1003,31 @@ const HealthAssistant: React.FC = () => {
       return true;
     }
     
-    // User is logged in, show department selection
-    let departmentsList = '';
+    // User is logged in, show department selection with cards
+    let deptItems: Department[] = [];
+    
     if (departments.length > 0) {
-      departmentsList = 'Available Departments:\n\n';
-      departments.forEach((dept, index) => {
-        departmentsList += `${index + 1}. ${dept.name}${dept.description ? ` (${dept.description})` : ''}\n\n`;
-      });
+      deptItems = departments;
     } else {
       // Fallback if no departments are found
-      departmentsList = 'Available Departments:\n\n' +
-                       `1. Cardiology (heart-related issues)\n\n` +
-                       `2. Neurology (brain and nervous system)\n\n` +
-                       `3. Pediatrics (children's health)\n\n` +
-                       `4. Orthopedics (bone and joint issues)\n\n` +
-                       `5. Dermatology (skin conditions)\n\n`;
+      deptItems = [
+        { id: 'cardiology', name: 'Cardiology', description: 'Heart-related issues' },
+        { id: 'neurology', name: 'Neurology', description: 'Brain and nervous system' },
+        { id: 'pediatrics', name: 'Pediatrics', description: 'Children\'s health' },
+        { id: 'orthopedics', name: 'Orthopedics', description: 'Bone and joint issues' },
+        { id: 'dermatology', name: 'Dermatology', description: 'Skin conditions' }
+      ];
     }
     
     const departmentMessage: Message = {
       id: (Date.now() + 1).toString(),
-      text: `I can help you book an appointment. First, which department do you need?\n\n${departmentsList}\nPlease select a department by name or number, and I'll show you the available doctors.`,
+      text: `I can help you book an appointment. Please select a department from the options below:`,
       sender: 'assistant',
       timestamp: new Date(),
+      richContent: {
+        type: 'department-cards',
+        items: deptItems
+      }
     };
     
     setMessages(prev => [...prev, departmentMessage]);
@@ -987,6 +1035,73 @@ const HealthAssistant: React.FC = () => {
     return true;
   };
   
+  // Function to parse relative dates like 'tomorrow', 'next week', etc.
+  const parseRelativeDate = (dateStr: string): Date => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of day for date comparison
+    
+    let parsedDate = new Date();
+    const lowerDateStr = dateStr.toLowerCase();
+    
+    try {
+      // Handle common date phrases
+      if (lowerDateStr.includes('tomorrow')) {
+        parsedDate = new Date();
+        parsedDate.setDate(parsedDate.getDate() + 1);
+        console.log('Parsed "tomorrow" as:', parsedDate.toISOString().split('T')[0]);
+      } 
+      else if (lowerDateStr.includes('next week')) {
+        parsedDate = new Date();
+        parsedDate.setDate(parsedDate.getDate() + 7);
+      }
+      else if (lowerDateStr.includes('next month')) {
+        parsedDate = new Date();
+        parsedDate.setMonth(parsedDate.getMonth() + 1);
+      }
+      else if (lowerDateStr.match(/next (mon|tues|wednes|thurs|fri|satur|sun)day/)) {
+        // Handle "next Monday", "next Tuesday", etc.
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const todayDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        
+        // Find which day was mentioned
+        let targetDayIndex = -1;
+        for (let i = 0; i < dayNames.length; i++) {
+          if (lowerDateStr.includes(dayNames[i])) {
+            targetDayIndex = i;
+            break;
+          }
+        }
+        
+        if (targetDayIndex !== -1) {
+          // Calculate days to add
+          let daysToAdd = targetDayIndex - todayDayIndex;
+          if (daysToAdd <= 0) daysToAdd += 7; // If it's in the past or today, go to next week
+          
+          parsedDate = new Date();
+          parsedDate.setDate(parsedDate.getDate() + daysToAdd);
+        }
+      }
+      else {
+        // Try standard date parsing
+        const attemptedParse = new Date(dateStr);
+        if (!isNaN(attemptedParse.getTime())) {
+          parsedDate = attemptedParse;
+        }
+      }
+      
+      // Check if date is in the past
+      if (parsedDate < today) {
+        console.log('Cannot schedule for a past date, using today instead');
+        parsedDate = new Date(); // Use today instead
+      }
+    } catch (error) {
+      console.log('Could not parse date, using current date as fallback');
+      parsedDate = new Date();
+    }
+    
+    return parsedDate;
+  };
+
   // Function to check if input is a doctor selection
   const isDoctorSelection = (input: string): Doctor | undefined => {
     const lowerInput = input.toLowerCase();
@@ -1032,7 +1147,7 @@ const HealthAssistant: React.FC = () => {
     
     return undefined;
   };
-  
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -1092,7 +1207,7 @@ const HealthAssistant: React.FC = () => {
       const detailsMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: `Great! You've selected Dr. ${selectedDoctor.name}. Let's collect some details for your appointment:\n\n` +
-              `What date would you prefer? (e.g., tomorrow, next Monday, June 15th)`,
+              `What date would you prefer? Please provide the date in YYYY-MM-DD format (e.g., 2025-06-04 for tomorrow).`,
         sender: 'assistant',
         timestamp: new Date(),
       };
@@ -1179,7 +1294,7 @@ const HealthAssistant: React.FC = () => {
         
         const dateMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: `Great! You've selected: ${selectedTestNames.join(', ')}. What date would you prefer for your lab test? (e.g., tomorrow, next Monday, June 15th)`,
+          text: `Great! You've selected: ${selectedTestNames.join(', ')}. What date would you prefer for your lab test? Please provide the date in YYYY-MM-DD format (e.g., 2025-06-04 for tomorrow).`,
           sender: 'assistant',
           timestamp: new Date(),
         };
@@ -1190,15 +1305,19 @@ const HealthAssistant: React.FC = () => {
       }
       else if (labTestState.step === 2) {
         // User provided a date, now ask for time
+        // Parse the date properly
+        const parsedDate = parseRelativeDate(input);
+        const formattedDate = parsedDate.toISOString().split('T')[0];
+        
         setLabTestState({
           ...labTestState,
-          date: input,
+          date: formattedDate, // Store the properly formatted date
           step: 3
         });
         
         const timeMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: `Got it! You'd like to schedule for ${input}. What specific time would you prefer? Please provide the time in HH:MM format (e.g., 09:30, 14:00). Our lab is open from 9:00 AM to 5:00 PM.`,
+          text: `Got it! You'd like to schedule for ${formattedDate}. What specific time would you prefer? Please provide the time in HH:MM format (e.g., 09:30, 14:00). Our lab is open from 9:00 AM to 5:00 PM.`,
           sender: 'assistant',
           timestamp: new Date(),
         };
@@ -1291,15 +1410,19 @@ const HealthAssistant: React.FC = () => {
       // Handle different steps of the appointment booking process
       if (appointmentState.step === 1) {
         // User provided a date, now ask for time
+        // Parse the date properly
+        const parsedDate = parseRelativeDate(input);
+        const formattedDate = parsedDate.toISOString().split('T')[0];
+        
         setAppointmentState({
           ...appointmentState,
-          date: input,
+          date: formattedDate, // Store the properly formatted date
           step: 2
         });
         
         const timeMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: `Got it! You'd like to book for ${input}. What specific time would you prefer? Please provide the time in HH:MM format (e.g., 09:30, 14:00).`,
+          text: `Got it! You'd like to book for ${formattedDate}. What specific time would you prefer? Please provide the time in HH:MM format (e.g., 09:30, 14:00).`,
           sender: 'assistant',
           timestamp: new Date(),
         };
@@ -1435,27 +1558,35 @@ const HealthAssistant: React.FC = () => {
       const departmentDoctors = doctors.filter(doctor => 
         doctor.department.toLowerCase() === selectedDepartment.name.toLowerCase());
       
-      let response = '';
       if (departmentDoctors.length > 0) {
-        response = `For ${selectedDepartment.name}, we have the following doctors available:\n\nAvailable Doctors:\n\n`;
+        // Create a doctor cards message
+        const doctorCardsMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: `For ${selectedDepartment.name}, we have the following doctors available. Please select a doctor to continue:`,
+          sender: 'assistant',
+          timestamp: new Date(),
+          richContent: {
+            type: 'doctor-cards',
+            items: departmentDoctors.map(doctor => ({
+              ...doctor,
+              // Add any additional properties needed for display
+            }))
+          }
+        };
         
-        departmentDoctors.forEach((doctor, index) => {
-          response += `${index + 1}. ${doctor.name}${doctor.availability ? ` (${doctor.availability})` : ''}\n\n`;
-        });
-        
-        response += 'Would you like to book an appointment with one of these doctors? Please select by name or number.';
+        setMessages(prev => [...prev, doctorCardsMessage]);
       } else {
-        response = `We don't currently have doctors available in the ${selectedDepartment.name} department. Would you like to check another department?`;
+        // No doctors available for this department
+        const noDocMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: `We don't currently have doctors available in the ${selectedDepartment.name} department. Would you like to check another department?`,
+          sender: 'assistant',
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, noDocMessage]);
       }
       
-      const doctorListMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        sender: 'assistant',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, doctorListMessage]);
       setIsLoading(false);
       return;
     }
@@ -1494,8 +1625,14 @@ const HealthAssistant: React.FC = () => {
       }
     }
     
-    // If this is a general appointment request, directly show department selection
-    if (isGeneralAppointmentRequest) {
+    // If this is a general appointment request, 
+    // Use fuzzy matching for appointment-related terms to catch misspellings
+    const fuzzyAppointmentMatch = 
+      /appo?in?tme?n?t/.test(lowerInput) || 
+      (lowerInput.includes('book') && !lowerInput.includes('test')) ||
+      (lowerInput.includes('schedul') && !lowerInput.includes('test'));
+      
+    if (isGeneralAppointmentRequest || fuzzyAppointmentMatch) {
       // Use our dedicated appointment handler
       if (handleAppointmentRequest()) {
         return;
@@ -1687,6 +1824,101 @@ const HealthAssistant: React.FC = () => {
                   }`}
                 >
                   <p className="text-sm">{message.text}</p>
+                  
+                  {message.richContent?.type === 'department-cards' && (
+                    <div className="mt-3 grid grid-cols-1 gap-2">
+                      {(message.richContent.items as Department[]).map((dept) => (
+                        <div key={dept.id} className="border border-gray-200 rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <h4 className="font-medium text-[#14396D]">{dept.name}</h4>
+                          {dept.description && <p className="text-xs text-gray-600 mt-1">{dept.description}</p>}
+                          <button 
+                            onClick={() => {
+                              // Create a special flag to bypass AI and directly show doctors
+                              const departmentDoctors = doctors.filter(doctor => 
+                                doctor.department.toLowerCase() === dept.name.toLowerCase());
+                              
+                              if (departmentDoctors.length > 0) {
+                                // Create a doctor cards message
+                                const doctorCardsMessage: Message = {
+                                  id: (Date.now() + 1).toString(),
+                                  text: `For ${dept.name}, we have the following doctors available. Please select a doctor to continue:`,
+                                  sender: 'assistant',
+                                  timestamp: new Date(),
+                                  richContent: {
+                                    type: 'doctor-cards',
+                                    items: departmentDoctors.map(doctor => ({
+                                      ...doctor
+                                    }))
+                                  }
+                                };
+                                
+                                setMessages(prev => [...prev, doctorCardsMessage]);
+                              } else {
+                                // No doctors available for this department
+                                const noDocMessage: Message = {
+                                  id: (Date.now() + 1).toString(),
+                                  text: `We don't currently have doctors available in the ${dept.name} department. Would you like to check another department?`,
+                                  sender: 'assistant',
+                                  timestamp: new Date(),
+                                };
+                                
+                                setMessages(prev => [...prev, noDocMessage]);
+                              }
+                            }}
+                            className="mt-2 w-full bg-[#14396D] text-white text-xs py-1 px-2 rounded hover:bg-[#0F2D56] transition-colors"
+                          >
+                            Select
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {message.richContent?.type === 'doctor-cards' && (
+                    <div className="mt-3 grid grid-cols-1 gap-2">
+                      {(message.richContent.items as Doctor[]).map((doctor) => (
+                        <div key={doctor.id} className="border border-gray-200 rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <h4 className="font-medium text-[#14396D]">{doctor.name}</h4>
+                          <p className="text-xs text-gray-600 mt-1">Department: {doctor.department}</p>
+                          {doctor.availability && <p className="text-xs text-gray-600">Availability: {doctor.availability}</p>}
+                          {doctor.specialization && <p className="text-xs text-gray-600">Specialization: {doctor.specialization}</p>}
+                          <button 
+                            onClick={() => {
+                              // Directly process the doctor selection without adding a user message
+                              setInput(doctor.name);
+                              handleSendMessage(new Event('submit') as unknown as React.FormEvent);
+                            }}
+                            className="mt-2 w-full bg-[#14396D] text-white text-xs py-1 px-2 rounded hover:bg-[#0F2D56] transition-colors"
+                          >
+                            Select
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {message.richContent?.type === 'lab-test-cards' && (
+                    <div className="mt-3 grid grid-cols-1 gap-2">
+                      {(message.richContent.items as LabTest[]).map((test) => (
+                        <div key={test.id} className="border border-gray-200 rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow">
+                          <h4 className="font-medium text-[#14396D]">{test.name}</h4>
+                          {test.description && <p className="text-xs text-gray-600 mt-1">{test.description}</p>}
+                          {test.price && <p className="text-xs font-medium text-green-600 mt-1">Rs. {test.price}</p>}
+                          <button 
+                            onClick={() => {
+                              // Directly process the lab test selection without adding a user message
+                              setInput(test.name);
+                              handleSendMessage(new Event('submit') as unknown as React.FormEvent);
+                            }}
+                            className="mt-2 w-full bg-[#14396D] text-white text-xs py-1 px-2 rounded hover:bg-[#0F2D56] transition-colors"
+                          >
+                            Select
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   <p className="text-xs mt-1 opacity-70">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
