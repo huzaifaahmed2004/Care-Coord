@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { db } from './firebase';
 import { useNavigate, Link } from 'react-router-dom';
+import { doctorLogin } from './custom-auth';
 
 const DoctorLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -22,39 +22,24 @@ const DoctorLogin: React.FC = () => {
     setLoading(true);
     
     try {
-      // Attempt to sign in
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Use custom authentication system
+      const result = await doctorLogin(email, password);
       
-      // Check if the user is a doctor by querying the doctors collection by email
-      const doctorsRef = collection(db, 'doctors');
-      const doctorsQuery = query(doctorsRef, where('email', '==', email));
-      const querySnapshot = await getDocs(doctorsQuery);
-      
-      // If we found a doctor with this email, they are a doctor
-      if (!querySnapshot.empty) {
-        const doctorDoc = querySnapshot.docs[0];
-        const doctorId = doctorDoc.id;
+      if (result.success && result.doctorId) {
         // Store doctor session in localStorage
         localStorage.setItem('doctorSession', 'yes');
-        localStorage.setItem('doctorId', doctorId);
+        localStorage.setItem('doctorId', result.doctorId);
         localStorage.setItem('doctorEmail', email);
         
         // Redirect to doctor dashboard
         navigate('/doctor/dashboard');
       } else {
-        // Not a doctor, show error
-        await auth.signOut();
-        setError('This account does not have doctor privileges');
+        // Authentication failed
+        setError(result.error || 'Invalid email or password');
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Invalid email or password');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many failed login attempts. Please try again later or reset your password');
-      } else {
-        setError(err.message || 'An error occurred during login');
-      }
+      setError(err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }
@@ -353,8 +338,8 @@ const DoctorLogin: React.FC = () => {
                     localStorage.removeItem('doctorSession');
                     localStorage.removeItem('doctorId');
                     localStorage.removeItem('doctorEmail');
-                    // Sign out from Firebase auth
-                    auth.signOut();
+                    // No need to sign out from Firebase auth anymore
+                    // Just navigate back to main site
                   }}
                 >
                   Return to main site

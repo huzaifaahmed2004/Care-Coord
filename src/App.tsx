@@ -34,6 +34,9 @@ import AdminNotifications from './lib/AdminNotifications';
 import AdminDashboardHome from './lib/AdminDashboardHome';
 import MigrateLabTests from './lib/MigrateLabTests';
 import HealthAssistant from './lib/HealthAssistant';
+import ForceProfileCompletion from './lib/ForceProfileCompletion';
+import ProfileCompletionGuard from './lib/ProfileCompletionGuard';
+import TestAuthSystem from './lib/TestAuthSystem';
 
 // Responsive MainHeader with burger menu
 function MainHeader() {
@@ -870,29 +873,34 @@ export default function App() {
       <SettingsProvider>
         <Router>
           <Routes>
+            {/* Force profile completion route - no header/footer */}
+            <Route path="/complete-profile" element={<ForceProfileCompletion />} />
+            
             {/* Public site gets header */}
             <Route
               path="*"
               element={
                 <MainSiteGuard>
-                  <MainHeader />
-                  <Routes>
-                    <Route path="/" element={<HomeContent />} />
-                    <Route path="/login" element={<LoginForm />} />
-                    <Route path="/register" element={<PatientRegistrationForm />} />
-                    <Route path="/appointment" element={<AppointmentPage />} />
-                    <Route path="/laboratory" element={<LaboratoryPage />} />
-                    <Route path="/departments" element={<DepartmentsPage />} />
-                    <Route path="/doctors" element={<DoctorsPage />} />
-                    <Route path="/contact" element={<ContactPage />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    {/* Lab Operator routes are moved to a separate route structure below */}
-                    {/* Add more public routes here */}
-                  </Routes>
-                  <Footer />
-                  {/* Health Assistant Chat Widget */}
-                  <HealthAssistant />
+                  <ProfileCompletionGuard>
+                    <MainHeader />
+                    <Routes>
+                      <Route path="/" element={<HomeContent />} />
+                      <Route path="/login" element={<LoginForm />} />
+                      <Route path="/register" element={<PatientRegistrationForm />} />
+                      <Route path="/appointment" element={<AppointmentPage />} />
+                      <Route path="/laboratory" element={<LaboratoryPage />} />
+                      <Route path="/departments" element={<DepartmentsPage />} />
+                      <Route path="/doctors" element={<DoctorsPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      {/* Lab Operator routes are moved to a separate route structure below */}
+                      {/* Add more public routes here */}
+                    </Routes>
+                    <Footer />
+                    {/* Health Assistant Chat Widget */}
+                    <HealthAssistant />
+                  </ProfileCompletionGuard>
                 </MainSiteGuard>
               }
             />
@@ -909,6 +917,9 @@ export default function App() {
                 </DoctorProtectedRoute>
               } 
             />
+            
+            {/* Test Auth System - For development only */}
+            <Route path="/test-auth" element={<TestAuthSystem />} />
             
             {/* Lab Operator Portal Routes - No Header/Footer */}
             <Route path="/LabOperator/*" element={

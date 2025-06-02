@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { updateDoctorPassword } from './custom-auth';
 
 interface Notification {
   id: string;
@@ -360,7 +361,7 @@ const AdminNotifications: React.FC = () => {
                         setIsOpen(false);
                       } catch (error) {
                         console.error('Error rejecting password reset:', error);
-                        alert('Failed to reject password reset request. Please try again.');
+                        console.error('Failed to reject password reset request. Please try again.');
                       } finally {
                         setProcessing(false);
                       }
@@ -376,6 +377,7 @@ const AdminNotifications: React.FC = () => {
                       setProcessing(true);
                       try {
                         // Find the doctor in the database
+                        console.log('Finding doctor with email:', selectedNotification.doctorEmail);
                         const doctorsQuery = query(
                           collection(db, 'doctors'),
                           where('email', '==', selectedNotification.doctorEmail)
@@ -383,6 +385,27 @@ const AdminNotifications: React.FC = () => {
                         const querySnapshot = await getDocs(doctorsQuery);
                         
                         if (!querySnapshot.empty) {
+                          const doctorDoc = querySnapshot.docs[0];
+                          const doctorId = doctorDoc.id;
+                          console.log('Found doctor with ID:', doctorId);
+                          
+                          // Get the new password from the notification
+                          const newPassword = selectedNotification.newPassword;
+                          
+                          if (!newPassword) {
+                            throw new Error('New password not found in the notification');
+                          }
+                          
+                          console.log('Updating password for doctor ID:', doctorId);
+                          // Update the doctor's password using our custom auth system
+                          const passwordUpdateResult = await updateDoctorPassword(doctorId, newPassword);
+                          
+                          if (!passwordUpdateResult.success) {
+                            throw new Error(passwordUpdateResult.error || 'Failed to update password');
+                          }
+                          
+                          console.log('Password updated successfully');
+                          
                           // Update the notification status
                           const notificationRef = doc(db, 'notifications', selectedNotification.id);
                           await updateDoc(notificationRef, {
@@ -398,9 +421,10 @@ const AdminNotifications: React.FC = () => {
                             status: 'completed',
                             createdAt: new Date().toISOString(),
                             read: false,
-                            message: `Password for ${selectedNotification.doctorEmail} has been reset successfully.`
+                            message: `Password for ${selectedNotification.doctorEmail} has been reset successfully to: ${newPassword}`
                           });
                           
+                          console.log(`Password for ${selectedNotification.doctorEmail} has been reset successfully to: ${newPassword}`);
                           setSelectedNotification(null);
                           setIsOpen(false);
                         } else {

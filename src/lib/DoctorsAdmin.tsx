@@ -1,5 +1,4 @@
 import { FirebaseError } from "firebase/app";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   addDoc,
   collection,
@@ -12,8 +11,9 @@ import {
 } from "firebase/firestore";
 // Firebase Storage imports removed as we're using Base64 encoding instead
 import { useEffect, useState, useRef } from "react";
-import { auth, db } from "./firebase";
+import { db } from "./firebase";
 import { uploadFileToS3, convertImageToBase64 } from './imageUtils';
+import { createDoctorAccount, updateDoctorPassword } from './custom-auth';
 
 // --- Doctor Images ---
 // Higher quality doctor avatars with professional appearance
@@ -81,7 +81,7 @@ function DoctorModal({
       feePercentage: 10,
     }
   );
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(doctor?.email || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -221,34 +221,42 @@ function DoctorModal({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    console.log("Form submitted with data:", form);
-
+    setSaving(true);
+    
     try {
-      // Show loading state
-      setSaving(true);
-
-      // First upload image if exists
-      console.log("Starting image upload process...");
-      const imageUrl = await uploadImage();
-      console.log("Image uploaded, URL:", imageUrl);
-
-      // Call save with updated form data including image URL
-      const doctorData = {
-        ...form,
-        imgUrl: imageUrl
-      };
-
-      console.log("Submitting doctor data:", doctorData);
-      onSave(doctorData, email, password);
-    } catch (error) {
-      console.error('Error during form submission:', error);
-      let errorMessage = 'Error saving doctor information.';
-      if (error instanceof Error) {
-        errorMessage += ' ' + error.message;
+      // Validate form data
+      if (!form.name || !form.gender || !form.age || !form.departmentId || !form.speciality) {
+        throw new Error('Please fill out all required fields');
       }
-      alert(errorMessage);
+      
+      if (!doctor && (!email || !password)) {
+        throw new Error('Email and password are required for new doctors');
+      }
+      
+      // Process image if needed
+      let finalImageUrl = form.imgUrl;
+      if (imageFile) {
+        try {
+          finalImageUrl = await uploadImage();
+        } catch (error) {
+          console.error('Image upload failed:', error);
+          throw new Error('Failed to upload image. Please try again.');
+        }
+      }
+      
+      // Create final form data with image URL
+      const finalForm: Doctor = {
+        ...form,
+        imgUrl: finalImageUrl || defaultAvatar
+      };
+      
+      // Call onSave with the form data
+      onSave(finalForm, email, password);
+    } catch (error) {
+      console.error('Form submission error:', error);
+      alert(error instanceof Error ? error.message : 'An error occurred');
       setSaving(false);
     }
   }
@@ -330,6 +338,7 @@ function DoctorModal({
               required
               className="w-full border rounded p-2"
               placeholder="doctor@example.com"
+              disabled={doctor !== null} // Disable email field for existing doctors
             />
           </div>
           <div>
@@ -564,7 +573,7 @@ export default function DoctorsAdmin() {
     setFilteredDoctors(filtered);
   }, [doctors, searchTerm, selectedDepartment, specialtyFilter]);
 
-  // Add new doctor (Firestore+FirebaseAuth)
+  // Add new doctor (using custom auth system)
   async function handleAdd(docData: Doctor, email: string, password: string) {
     console.log("handleAdd called with:", docData);
     setSaving(true);
@@ -574,140 +583,90 @@ export default function DoctorsAdmin() {
         throw new Error("Email and password are required");
       }
 
-      const doctorData = { ...docData };
-
-      // Validate password length
-      if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters long");
-      }
-
-      // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new Error("Please enter a valid email address");
       }
 
-      console.log("Creating user with email:", email);
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("User created:", cred.user.uid);
+      console.log("Creating doctor account with email:", email);
+      
+      // Create doctor account using custom auth system
+      const result = await createDoctorAccount(
+        {
+          ...docData,
+          email,
+          departmentId: docData.departmentId,
+          createdAt: new Date().toISOString(),
+        },
+        password
+      );
+      
+      if (!result.success || !result.doctorId) {
+        throw new Error(result.error || 'Failed to create doctor account');
+      }
+      
+      console.log("Doctor added to Firestore:", result.doctorId);
 
-      // Add to firestore with all info including imgUrl
-      const newDocRef = await addDoc(collection(db, 'doctors'), {
+      // Add to local state
+      const newDoctor = {
+        id: result.doctorId,
         ...docData,
         email,
-        departmentId: docData.departmentId,
-        createdAt: new Date().toISOString(),
-      });
-      console.log("Doctor added to Firestore:", newDocRef.id);
-
-      // Update local state with the new doctor
-      const newDoctor: Doctor = {
-        id: newDocRef.id,
-        ...docData,
-        email,
-        password: '', // Add empty password to satisfy the Doctor interface
       };
-
-      setDoctors(prev => [...prev, newDoctor]);
+      setDoctors([...doctors, newDoctor]);
       setModalOpen(false);
     } catch (e: unknown) {
       console.error("Error in handleAdd:", e);
-      let errorMessage = 'Could not create doctor.';
-
-      if (e instanceof FirebaseError) {
-        switch (e.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = 'This email is already registered.';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'Please enter a valid email address.';
-            break;
-          case 'auth/weak-password':
-            errorMessage = 'Password is too weak. Please use a stronger password.';
-            break;
-          default:
-            errorMessage = e.message;
-        }
-      } else if (e instanceof Error) {
-        errorMessage = e.message;
-      }
-
+      const errorMessage =
+        e instanceof FirebaseError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Failed to add doctor.';
       setError(errorMessage);
     }
     setSaving(false);
   }
 
   // Update existing doctor
-  async function handleUpdate(newDoc: Doctor, email: string, password: string) {
-    console.log("handleUpdate called with:", newDoc);
+  async function handleUpdate(id: string, doctorData: Doctor, email: string, password: string) {
     setSaving(true);
     setError(null);
     try {
-      if (!newDoc.id) {
-        throw new Error("Doctor ID is required for update");
-      }
+      console.log("Updating doctor with ID:", id);
+      console.log("Password provided:", password ? "Yes (length: " + password.length + ")" : "No");
       
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error("Please enter a valid email address");
-      }
+      // Update the document in Firestore
+      const docRef = doc(collection(db, "doctors"), id);
       
-      // Check if password is provided and validate it
-      if (password && password.length > 0) {
+      // Remove password from data to be stored
+      const { password: _, ...dataToUpdate } = doctorData;
+      
+      await updateDoc(docRef, dataToUpdate);
+      console.log("Basic doctor info updated successfully");
+      
+      // If password is provided, update it using the custom auth system
+      if (password && password.trim() !== '') {
         if (password.length < 6) {
           throw new Error("Password must be at least 6 characters long");
         }
         
-        // Create a notification for the password change
-        await addDoc(collection(db, 'notifications'), {
-          type: 'admin_password_change',
-          doctorEmail: email,
-          newPassword: password,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          read: false,
-          message: `Admin has updated password for doctor: ${email}`
-        });
+        console.log("Updating password for doctor ID:", id);
+        // Update doctor password using custom auth system
+        const result = await updateDoctorPassword(id, password);
+        console.log("Password update result:", result);
         
-        console.log("Password change notification created for:", email);
-      }
-
-      const { id, ...doctorData } = newDoc;
-      console.log("Updating doctor:", id, doctorData);
-
-      // Update the doctor in Firestore
-      await updateDoc(doc(collection(db, 'doctors'), id), {
-        ...doctorData,
-        departmentId: doctorData.departmentId,
-        updatedAt: new Date().toISOString(),
-      });
-      console.log("Doctor updated in Firestore");
-      
-      // If a new password was provided, update it
-      if (password && password.length >= 6) {
-        // First, find the doctor's email to get their auth account
-        const doctorsQuery = query(
-          collection(db, 'doctors'),
-          where('email', '==', email)
-        );
-        const querySnapshot = await getDocs(doctorsQuery);
-        
-        if (!querySnapshot.empty) {
-          // We found the doctor, now we need to update their password
-          // Since we can't directly update Firebase Auth passwords from the client,
-          // we'll create a notification for the admin to handle it
-          await addDoc(collection(db, 'notifications'), {
-            type: 'admin_password_change',
-            doctorEmail: email,
-            newPassword: password,
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-            read: false,
-            message: `Admin has updated password for doctor: ${email}`
-          });
-          console.log("Password change notification created");
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update password');
         }
+        
+        console.log("Doctor password updated successfully");
+        
+        // Log success but don't show alert
+        console.log("Doctor information and password updated successfully");
+      } else {
+        // Log success but don't show alert
+        console.log("Doctor information updated successfully");
       }
 
       // Update local state
@@ -725,6 +684,7 @@ export default function DoctorsAdmin() {
             ? e.message
             : 'Update failed.';
       setError(errorMessage);
+      console.error("Error: " + errorMessage);
     }
     setSaving(false);
   }
@@ -1032,7 +992,13 @@ export default function DoctorsAdmin() {
             // After modal is closed, reset selected to ensure clean state for next open
             setTimeout(() => setSelected(null), 300);
           }}
-          onSave={selected ? handleUpdate : handleAdd}
+          onSave={(doctor, email, password) => {
+            if (selected && selected.id) {
+              handleUpdate(selected.id, doctor, email, password);
+            } else {
+              handleAdd(doctor, email, password);
+            }
+          }}
           doctor={selected}
         />
         {saving && (

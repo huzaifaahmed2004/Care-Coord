@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { updateDoctorPassword } from './custom-auth';
 
 interface PasswordResetRequest {
   id: string;
@@ -44,6 +45,8 @@ const AdminPasswordManager: React.FC = () => {
   const handleApproveRequest = async (request: PasswordResetRequest) => {
     setProcessing(true);
     try {
+      console.log('Processing password reset request for:', request.doctorEmail);
+      
       // Find the doctor in the database
       const doctorsQuery = query(
         collection(db, 'doctors'),
@@ -51,37 +54,68 @@ const AdminPasswordManager: React.FC = () => {
       );
       const querySnapshot = await getDocs(doctorsQuery);
       
-      if (!querySnapshot.empty) {
-        const doctorDoc = querySnapshot.docs[0];
-        
-        // Update the notification status
-        const notificationRef = doc(db, 'notifications', request.id);
-        await updateDoc(notificationRef, {
-          status: 'approved',
-          read: true,
-          processedAt: new Date().toISOString()
-        });
-        
-        // Add a confirmation message for the admin
-        await addDoc(collection(db, 'notifications'), {
-          type: 'password_reset_confirmation',
-          doctorEmail: request.doctorEmail,
-          status: 'completed',
-          createdAt: new Date().toISOString(),
-          read: false,
-          message: `Password for ${request.doctorEmail} has been reset successfully.`
-        });
-        
-        setSelectedRequest(null);
-      } else {
-        throw new Error('Doctor not found');
+      if (querySnapshot.empty) {
+        throw new Error(`Doctor with email ${request.doctorEmail} not found`);
       }
+      
+      const doctorDoc = querySnapshot.docs[0];
+      const doctorId = doctorDoc.id;
+      
+      console.log('Found doctor with ID:', doctorId);
+      
+      // Generate a new secure password if one wasn't provided
+      const newPassword = request.newPassword || generateSecurePassword();
+      console.log('Using password:', newPassword ? '(provided in request)' : '(newly generated)');
+      
+      // Update the doctor's password using our custom auth system
+      console.log('Updating password for doctor ID:', doctorId);
+      const passwordUpdateResult = await updateDoctorPassword(doctorId, newPassword);
+      
+      if (!passwordUpdateResult.success) {
+        throw new Error(passwordUpdateResult.error || 'Failed to update password');
+      }
+      
+      console.log('Password updated successfully');
+      
+      // Update the notification status
+      const notificationRef = doc(db, 'notifications', request.id);
+      await updateDoc(notificationRef, {
+        status: 'approved',
+        read: true,
+        processedAt: new Date().toISOString(),
+        newPassword: newPassword // Store the new password in the notification for reference
+      });
+      
+      // Add a confirmation message for the admin
+      await addDoc(collection(db, 'notifications'), {
+        type: 'password_reset_confirmation',
+        doctorEmail: request.doctorEmail,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        read: false,
+        message: `Password for ${request.doctorEmail} has been reset successfully to: ${newPassword}`
+      });
+      
+      console.log(`Password for ${request.doctorEmail} has been reset successfully to: ${newPassword}`);
+      setSelectedRequest(null);
     } catch (error) {
       console.error('Error processing password reset:', error);
-      alert('Failed to process password reset request. Please try again.');
+      console.error('Failed to process password reset request: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setProcessing(false);
     }
+  };
+  
+  // Generate a secure random password
+  const generateSecurePassword = (): string => {
+    const length = 10;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    return password;
   };
 
   const handleRejectRequest = async (request: PasswordResetRequest) => {
