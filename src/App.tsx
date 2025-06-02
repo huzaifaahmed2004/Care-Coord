@@ -34,9 +34,7 @@ import AdminNotifications from './lib/AdminNotifications';
 import AdminDashboardHome from './lib/AdminDashboardHome';
 import MigrateLabTests from './lib/MigrateLabTests';
 import HealthAssistant from './lib/HealthAssistant';
-import ForceProfileCompletion from './lib/ForceProfileCompletion';
-import ProfileCompletionGuard from './lib/ProfileCompletionGuard';
-import TestAuthSystem from './lib/TestAuthSystem';
+import { ForceProfileCompletion, ProfileCompletionGuard, TestAuthSystem } from './lib/index';
 
 // Responsive MainHeader with burger menu
 function MainHeader() {

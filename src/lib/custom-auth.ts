@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import * as bcryptjs from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
 
 /**
  * Custom authentication system for doctors using Firestore instead of Firebase Auth
