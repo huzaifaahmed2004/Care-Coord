@@ -5,7 +5,11 @@ import { db } from './firebase';
 interface Notification {
   id: string;
   type: string;
-  doctorEmail: string;
+  doctorEmail?: string;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
+  subject?: string;
   newPassword?: string;
   status: string;
   createdAt: string;
@@ -103,6 +107,13 @@ const AdminNotifications: React.FC = () => {
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
         );
+      case 'contact_message':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+          </svg>
+        );
       default:
         return (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
@@ -120,6 +131,8 @@ const AdminNotifications: React.FC = () => {
         return `Password change for doctor ${notification.doctorEmail}`;
       case 'password_reset_confirmation':
         return notification.message || 'Password reset confirmation';
+      case 'contact_message':
+        return `Contact message from ${notification.userName} (${notification.userEmail})`;
       default:
         return 'New notification';
     }
@@ -177,7 +190,7 @@ const AdminNotifications: React.FC = () => {
                   key={notification.id}
                   onClick={() => {
                     markAsRead(notification.id);
-                    if (notification.type === 'password_reset' || notification.type === 'admin_password_change') {
+                    if (notification.type === 'password_reset' || notification.type === 'admin_password_change' || notification.type === 'contact_message') {
                       setSelectedNotification(notification);
                     }
                   }}
@@ -218,30 +231,70 @@ const AdminNotifications: React.FC = () => {
       )}
       
       {/* Password Reset Modal */}
-      {selectedNotification && (selectedNotification.type === 'password_reset' || selectedNotification.type === 'admin_password_change') && (
+      {selectedNotification && (selectedNotification.type === 'password_reset' || selectedNotification.type === 'admin_password_change' || selectedNotification.type === 'contact_message') && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold mb-4">
-              {selectedNotification.type === 'password_reset' ? 'Password Reset Request' : 'Admin Password Change'}
+              {selectedNotification.type === 'password_reset' ? 'Password Reset Request' : 
+               selectedNotification.type === 'admin_password_change' ? 'Admin Password Change' : 
+               'Contact Form Message'}
             </h3>
             
             <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Doctor Email</p>
-                <p className="text-gray-900">{selectedNotification.doctorEmail}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-gray-500">New Password</p>
-                <p className="text-gray-900 font-mono bg-gray-100 p-2 rounded">
-                  {selectedNotification.newPassword || 'Not specified'}
-                </p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-gray-500">Requested At</p>
-                <p className="text-gray-900">{formatDate(selectedNotification.createdAt)}</p>
-              </div>
+              {selectedNotification.type === 'contact_message' ? (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">From</p>
+                    <p className="text-gray-900">{selectedNotification.userName}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Email</p>
+                    <p className="text-gray-900">{selectedNotification.userEmail}</p>
+                  </div>
+                  
+                  {selectedNotification.userPhone && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Phone</p>
+                      <p className="text-gray-900">{selectedNotification.userPhone}</p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Subject</p>
+                    <p className="text-gray-900">{selectedNotification.subject || 'No subject'}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Message</p>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded border border-gray-100">{selectedNotification.message}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Received At</p>
+                    <p className="text-gray-900">{formatDate(selectedNotification.createdAt)}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Doctor Email</p>
+                    <p className="text-gray-900">{selectedNotification.doctorEmail}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">New Password</p>
+                    <p className="text-gray-900 font-mono bg-gray-100 p-2 rounded">
+                      {selectedNotification.newPassword || 'Not specified'}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Requested At</p>
+                    <p className="text-gray-900">{formatDate(selectedNotification.createdAt)}</p>
+                  </div>
+                </>  
+              )}
               
               <div>
                 <p className="text-sm font-medium text-gray-500">Status</p>
@@ -263,7 +316,33 @@ const AdminNotifications: React.FC = () => {
                 Close
               </button>
               
-              {selectedNotification.status === 'pending' && (
+              {selectedNotification.type === 'contact_message' ? (
+                <button
+                  onClick={() => {
+                    // Open default email client with pre-filled email
+                    const subject = encodeURIComponent(`Re: ${selectedNotification.subject || 'Your message to CareCoord'}`);
+                    const body = encodeURIComponent(`Dear ${selectedNotification.userName},\n\nThank you for contacting CareCoord. We received your message:\n\n"${selectedNotification.message}"\n\n`);
+                    window.location.href = `mailto:${selectedNotification.userEmail}?subject=${subject}&body=${body}`;
+                    
+                    // Mark as responded
+                    (async () => {
+                      try {
+                        const notificationRef = doc(db, 'notifications', selectedNotification.id);
+                        await updateDoc(notificationRef, {
+                          status: 'responded',
+                          read: true,
+                          processedAt: new Date().toISOString()
+                        });
+                      } catch (error) {
+                        console.error('Error updating notification status:', error);
+                      }
+                    })();
+                  }}
+                  className="px-4 py-2 bg-blue-600 rounded-md text-white hover:bg-blue-700"
+                >
+                  Send Email Response
+                </button>
+              ) : selectedNotification.status === 'pending' && (
                 <>
                   <button
                     onClick={async () => {

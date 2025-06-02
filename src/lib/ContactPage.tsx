@@ -48,10 +48,25 @@ const ContactPage: React.FC = () => {
         throw new Error('Please enter a valid email address');
       }
       
-      // Submit to Firestore
+      const timestamp = new Date().toISOString();
+      
+      // Submit to Firestore contactMessages collection
       await addDoc(collection(db, 'contactMessages'), {
         ...formData,
-        createdAt: new Date().toISOString()
+        createdAt: timestamp
+      });
+      
+      // Also add to notifications collection for admin
+      await addDoc(collection(db, 'notifications'), {
+        type: 'contact_message',
+        userEmail: formData.email,
+        userName: formData.name,
+        userPhone: formData.phone,
+        subject: formData.subject || 'Contact Form Message',
+        message: formData.message,
+        createdAt: timestamp,
+        read: false,
+        status: 'pending'
       });
       
       // Reset form and show success message
