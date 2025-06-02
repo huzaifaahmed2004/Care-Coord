@@ -38,7 +38,7 @@ const ContactPage: React.FC = () => {
     
     try {
       // Validate form data
-      if (!formData.name || !formData.email || !formData.message) {
+      if (!formData.name || !formData.email || !formData.phone || !formData.message) {
         throw new Error('Please fill in all required fields');
       }
       
@@ -46,6 +46,15 @@ const ContactPage: React.FC = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
         throw new Error('Please enter a valid email address');
+      }
+      
+      // Phone validation (if provided)
+      if (formData.phone) {
+        // Remove any non-digit characters for validation
+        const phoneDigits = formData.phone.replace(/\D/g, '');
+        if (phoneDigits.length !== 11) {
+          throw new Error('Phone number must be exactly 11 digits');
+        }
       }
       
       const timestamp = new Date().toISOString();
@@ -222,7 +231,7 @@ const ContactPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
+                      Phone Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -230,9 +239,13 @@ const ContactPage: React.FC = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
+                      required
+                      pattern="[0-9]{11}"
+                      title="Phone number must be exactly 11 digits"
                       className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="+92 123 456 7890"
+                      placeholder="03XXXXXXXXX"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Must be exactly 11 digits</p>
                   </div>
                   
                   <div>
