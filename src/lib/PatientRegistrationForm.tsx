@@ -24,7 +24,9 @@ export default function PatientRegistrationForm() {
   const { user, register, loginWithGoogle, isNewUser } = useAuth() ?? {};
   
   // Registration step state
-  const [step, setStep] = useState<'credentials' | 'patient-info'>(user ? 'patient-info' : 'credentials');
+  // Always start with credentials step for new visitors
+  // The useEffect below will change to patient-info if needed
+  const [step, setStep] = useState<'credentials' | 'patient-info'>('credentials');
   
   // Auth credentials
   const [email, setEmail] = useState('');
@@ -81,25 +83,22 @@ export default function PatientRegistrationForm() {
       if (isNewUser || forceProfileCompletion) {
         console.log('User needs to complete profile - showing form', 
                    { isNewUser, forceProfileCompletion });
+        
+        // CRITICAL: Force the step to patient-info for new users
         setStep('patient-info');
         
         // IMPORTANT: Ensure loading state is reset when showing the profile form
         setLoading(false);
+      } else {
+        // If user is logged in but doesn't need to complete profile, redirect to home
+        console.log('User already has profile - redirecting to home');
+        navigate('/');
       }
     }
-  }, [user, isNewUser]);
-  
-  // Redirect to home if user is logged in and has completed profile
-  useEffect(() => {
-    const forceProfileCompletion = checkProfileCompletionRequired();
-    
-    if (user && !isNewUser && !forceProfileCompletion) {
-      console.log('User already has profile - redirecting to home');
-      navigate('/');
-    } else if (user && (isNewUser || forceProfileCompletion)) {
-      console.log('User needs to complete profile - staying on form');
-    }
   }, [user, isNewUser, navigate]);
+  
+  // This useEffect is no longer needed as the redirection logic is handled in the previous useEffect
+  // Keeping this comment for documentation purposes
   
   // Handle email/password registration
   const handleEmailPasswordSignup = async (e: React.FormEvent) => {
@@ -122,7 +121,14 @@ export default function PatientRegistrationForm() {
         ...prev,
         email: email
       }));
+      
+      // CRITICAL: Force the step to patient-info
       setStep('patient-info');
+      
+      // Explicitly set flags to ensure profile completion
+      window.localStorage.setItem('forceProfileCompletion', 'true');
+      document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
+      console.log('Email registration - Explicitly directing user to complete profile form');
     } catch (err: unknown) {
       const errorMessage = err instanceof FirebaseError 
         ? err.message 
@@ -149,11 +155,13 @@ export default function PatientRegistrationForm() {
           email: user.email || ''
         }));
         
-        // IMPORTANT: Explicitly force the form to show the profile completion step
-        setStep('patient-info');
-        
-        // Force the isNewUser flag to true for Google sign-ins to ensure profile completion
+        // CRITICAL: Force the profile completion regardless of what AuthContext does
+        // This ensures Google sign-in users always see the profile form
         window.localStorage.setItem('forceProfileCompletion', 'true');
+        document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
+        
+        // Force the step to patient-info immediately
+        setStep('patient-info');
         
         console.log('Google signup - Explicitly directing user to complete profile form');
       }
@@ -171,6 +179,25 @@ export default function PatientRegistrationForm() {
   // Handle patient data changes
   const handlePatientDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Phone number validation - must be exactly 11 digits
+    if (name === 'phone') {
+      // Remove any non-digit characters for validation
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Only allow digits in the input
+      if (!/^\d*$/.test(value)) {
+        setError('Phone number must contain only digits.');
+        return;
+      }
+      
+      // Check if the length exceeds 11 digits
+      if (digitsOnly.length > 11) {
+        setError('Phone number must be exactly 11 digits.');
+        return;
+      }
+    }
+    
     setPatientData(prev => ({
       ...prev,
       [name]: value
@@ -386,6 +413,10 @@ export default function PatientRegistrationForm() {
                   className="w-full border rounded px-3 py-2 focus:outline-[#FF3D71]"
                   value={patientData.phone}
                   onChange={handlePatientDataChange}
+                  pattern="\d{11}"
+                  maxLength={11}
+                  title="Phone number must be exactly 11 digits"
+                  placeholder="11 digits phone number"
                   required
                 />
               </div>
@@ -397,7 +428,26 @@ export default function PatientRegistrationForm() {
                   name="dateOfBirth"
                   className="w-full border rounded px-3 py-2 focus:outline-[#FF3D71]"
                   value={patientData.dateOfBirth}
-                  onChange={handlePatientDataChange}
+                  onChange={(e) => {
+                    const selectedDate = new Date(e.target.value);
+                    const today = new Date();
+                    
+                    // Reset time parts to compare just the dates
+                    selectedDate.setHours(0, 0, 0, 0);
+                    today.setHours(0, 0, 0, 0);
+                    
+                    // Only update if date is not in the future
+                    if (selectedDate <= today) {
+                      handlePatientDataChange(e);
+                    } else {
+                      // If future date, show error or reset to current date
+                      setError('Date of birth cannot be in the future.');
+                      // Optional: Set to today's date instead
+                      const todayStr = today.toISOString().split('T')[0];
+                      setPatientData(prev => ({ ...prev, dateOfBirth: todayStr }));
+                    }
+                  }}
+                  max={new Date().toISOString().split('T')[0]} // Prevent future dates in date picker
                   required
                 />
               </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FirebaseError } from 'firebase/app';
 import { collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -23,6 +23,7 @@ interface Department {
 export default function BookAppointmentForm() {
   const { user } = useAuth() ?? {};
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Form data
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -53,6 +54,10 @@ export default function BookAppointmentForm() {
   const [error, setError] = useState<string | null>(null);
   const [calculatedFee, setCalculatedFee] = useState(0);
   
+  // Get pre-selected department and doctor from location state (if available)
+  const preSelectedDepartmentId = location.state?.departmentId;
+  const preSelectedDoctorId = location.state?.doctorId;
+
   // Fetch doctors, departments, and global settings
   useEffect(() => {
     async function fetchData() {
@@ -100,6 +105,31 @@ export default function BookAppointmentForm() {
           };
         });
         setDoctors(doctorsList);
+        
+        // If we have a pre-selected department, set it
+        if (preSelectedDepartmentId) {
+          const department = departmentsList.find(d => d.id === preSelectedDepartmentId);
+          if (department) {
+            setSelectedDepartment(preSelectedDepartmentId);
+            setFormData(prev => ({
+              ...prev,
+              departmentId: preSelectedDepartmentId,
+              departmentName: department.name
+            }));
+          }
+        }
+        
+        // If we have a pre-selected doctor, set it
+        if (preSelectedDoctorId) {
+          const doctor = doctorsList.find(d => d.id === preSelectedDoctorId);
+          if (doctor) {
+            setFormData(prev => ({
+              ...prev,
+              doctorId: preSelectedDoctorId,
+              doctorName: doctor.name
+            }));
+          }
+        }
       } catch (e) {
         console.error('Error fetching data:', e);
         setError('Failed to load doctors and departments. Please try again.');
@@ -109,7 +139,7 @@ export default function BookAppointmentForm() {
     }
     
     fetchData();
-  }, []);
+  }, [preSelectedDepartmentId, preSelectedDoctorId]);
   
   // Filter doctors by department
   useEffect(() => {

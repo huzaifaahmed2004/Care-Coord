@@ -247,6 +247,30 @@ export default function HomeContent() {
     }
   };
 
+  const handleDepartmentAppointmentClick = (departmentId: string) => {
+    if (!user) {
+      navigate('/login', { state: { from: '/appointment', showForm: true, departmentId } });
+    } else {
+      navigate('/appointment', { state: { showForm: true, departmentId } });
+    }
+  };
+
+  const handleDoctorAppointmentClick = (doctorId: string, departmentId: string) => {
+    if (!user) {
+      navigate('/login', { state: { from: '/appointment', showForm: true, doctorId, departmentId } });
+    } else {
+      navigate('/appointment', { state: { showForm: true, doctorId, departmentId } });
+    }
+  };
+
+  const handleLabTestClick = (labTestId: string) => {
+    if (!user) {
+      navigate('/login', { state: { from: '/laboratory', showForm: true, labTestId } });
+    } else {
+      navigate('/laboratory', { state: { showForm: true, labTestId } });
+    }
+  };
+
   return (
     <main className="bg-[#F6F8FB] min-h-screen">
       {/* Hero Section with Image Slider */}
@@ -409,7 +433,7 @@ export default function HomeContent() {
                       <p className="text-gray-600 mb-4 flex-grow">{dept.description}</p>
                       <button 
                         className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 w-full transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-                        onClick={handleAppointmentClick}
+                        onClick={() => handleDepartmentAppointmentClick(dept.id)}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
@@ -508,7 +532,7 @@ export default function HomeContent() {
                       
                       <button 
                         className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-4 py-2 w-full transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center mt-2 text-sm"
-                        onClick={handleAppointmentClick}
+                        onClick={() => handleDoctorAppointmentClick(doctor.id, doctor.departmentId || '')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
@@ -590,7 +614,7 @@ export default function HomeContent() {
                       </div>
                       <button 
                         className="bg-gradient-to-r from-[#14396D] to-[#2C5078] hover:from-[#2C5078] hover:to-[#14396D] text-white rounded-lg px-6 py-3 w-full transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-                        onClick={() => navigate('/laboratory', { state: { showForm: true } })}
+                        onClick={() => handleLabTestClick(lab.id)}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

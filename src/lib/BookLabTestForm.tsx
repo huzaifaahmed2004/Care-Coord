@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FirebaseError } from 'firebase/app';
 import { collection, addDoc, getDocs, query, where, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -14,6 +15,10 @@ interface TestType {
 
 export default function BookLabTestForm() {
   const { user } = useAuth() ?? {};
+  const location = useLocation();
+  
+  // Get pre-selected lab test from location state (if available)
+  const preSelectedLabTestId = location.state?.labTestId;
   
   // Form data
   const [testTypes, setTestTypes] = useState<TestType[]>([]);
@@ -63,6 +68,14 @@ export default function BookLabTestForm() {
           
           setTestTypes(availableTestsList);
           console.log('Fetched available lab tests:', availableTestsList.length);
+          
+          // If we have a pre-selected lab test, select it
+          if (preSelectedLabTestId) {
+            const labTest = availableTestsList.find(test => test.id === preSelectedLabTestId);
+            if (labTest) {
+              setSelectedTests([preSelectedLabTestId]);
+            }
+          }
         }
       } catch (e) {
         console.error('Error fetching available lab tests:', e);
@@ -73,7 +86,7 @@ export default function BookLabTestForm() {
     }
     
     fetchAvailableLabTests();
-  }, []);
+  }, [preSelectedLabTestId]);
   
   // Calculate total price when selected tests change
   useEffect(() => {

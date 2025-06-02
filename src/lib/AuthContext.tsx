@@ -19,7 +19,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isNewUser: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   loginWithGoogle: () => Promise<User>;
   register: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
@@ -42,7 +42,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkUserProfile = async (uid: string): Promise<boolean> => {
     try {
       const patientDoc = await getDoc(doc(db, 'patients', uid));
-      return patientDoc.exists();
+      if (!patientDoc.exists()) {
+        return false;
+      }
+      
+      // Check if all required fields are filled
+      const data = patientDoc.data();
+      const requiredFields = ['name', 'email', 'phone', 'dateOfBirth', 'gender'];
+      
+      for (const field of requiredFields) {
+        if (!data[field] || data[field].trim() === '') {
+          console.log(`User profile incomplete: missing ${field}`);
+          return false;
+        }
+      }
+      
+      // For phone number, check if it's exactly 11 digits
+      if (data.phone && data.phone.replace(/\D/g, '').length !== 11) {
+        console.log('User profile incomplete: phone number not 11 digits');
+        return false;
+      }
+      
+      return true;
     } catch (error) {
       console.error('Error checking user profile:', error);
       return false;
@@ -54,18 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       
       if (user) {
-        // Check if the user has a patient profile
-        const hasProfile = await checkUserProfile(user.uid);
-        console.log('Auth state changed - User:', user.uid, 'Has profile:', hasProfile);
+        // Check if the user has a complete patient profile
+        const hasCompleteProfile = await checkUserProfile(user.uid);
+        console.log('Auth state changed - User:', user.uid, 'Has complete profile:', hasCompleteProfile);
         
-        // If user doesn't have a profile, mark as new user and set localStorage flag
-        if (!hasProfile) {
+        // If user doesn't have a complete profile, mark as new user and set localStorage flag
+        if (!hasCompleteProfile) {
           console.log('User needs to complete profile - setting isNewUser flag');
           setIsNewUser(true);
-          // Use sessionStorage instead of localStorage for better cross-device support
+          // Use localStorage for persistence
           window.localStorage.setItem('forceProfileCompletion', 'true');
           // Also set a session cookie for better mobile support
-          document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
+          document.cookie = 'forceProfileCompletion=true; path=/; max-age=86400'; // 24 hours
         } else {
           setIsNewUser(false);
           window.localStorage.removeItem('forceProfileCompletion');
@@ -94,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const doctorSnapshot = await getDocs(doctorsQuery);
     
     if (!doctorSnapshot.empty) {
-      // This email belongs to a doctor, don't allow login through the main website
+      // This email belongs to a doctor, redirect to doctor login
       throw new Error('This email is registered as a doctor. Please use the doctor login page.');
     }
     
@@ -102,7 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await setPersistence(auth, browserSessionPersistence);
     
     // Proceed with normal login for patients
-    await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Check if the user has a complete profile
+    const hasCompleteProfile = await checkUserProfile(userCredential.user.uid);
+    if (!hasCompleteProfile) {
+      console.log('Login: User profile incomplete - forcing profile completion');
+      setIsNewUser(true);
+      window.localStorage.setItem('forceProfileCompletion', 'true');
+      document.cookie = 'forceProfileCompletion=true; path=/; max-age=86400'; // 24 hours
+    }
+    
+    return userCredential.user;
   };
 
   const loginWithGoogle = async (): Promise<User> => {
@@ -154,6 +186,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (email: string, password: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     setIsNewUser(true); // New user registered, needs to complete profile
+    
+    // Explicitly set flags to force profile completion
+    window.localStorage.setItem('forceProfileCompletion', 'true');
+    document.cookie = 'forceProfileCompletion=true; path=/; max-age=3600';
+    console.log('Email registration - New user created, profile needed');
+    
     return userCredential.user;
   };
 

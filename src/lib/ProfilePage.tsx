@@ -128,6 +128,48 @@ const ProfilePage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Special handling for date of birth to prevent future dates
+    if (name === 'dateOfBirth') {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      
+      // Reset time parts to compare just the dates
+      selectedDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      
+      // Only update if date is not in the future
+      if (selectedDate > today) {
+        setError('Date of birth cannot be in the future.');
+        // Optional: Set to today's date instead
+        const todayStr = today.toISOString().split('T')[0];
+        setProfile(prev => ({
+          ...prev,
+          dateOfBirth: todayStr
+        }));
+        return;
+      }
+    }
+    
+    // Validation for phone number
+    if (name === 'phoneNumber') {
+      // Only allow digits in the input
+      if (!/^\d*$/.test(value)) {
+        setError('Phone number must contain only digits.');
+        return;
+      }
+      
+      // Remove any non-digit characters for validation
+      const digitsOnly = value.replace(/\D/g, '');
+      
+      // Check if the length exceeds 11 digits
+      if (digitsOnly.length > 11) {
+        setError('Phone number must be exactly 11 digits.');
+        return;
+      }
+    }
+    
+    // Normal handling for other fields
     setProfile(prev => ({
       ...prev,
       [name]: value
@@ -327,7 +369,7 @@ const ProfilePage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
+                    Full Name*
                   </label>
                   <input
                     type="text"
@@ -342,7 +384,7 @@ const ProfilePage: React.FC = () => {
                 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
+                    Email Address*
                   </label>
                   <input
                     type="email"
@@ -372,7 +414,7 @@ const ProfilePage: React.FC = () => {
                 
                 <div>
                   <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
+                    Phone Number*
                   </label>
                   <input
                     type="tel"
@@ -380,13 +422,18 @@ const ProfilePage: React.FC = () => {
                     name="phoneNumber"
                     value={profile.phoneNumber}
                     onChange={handleChange}
+                    pattern="\d{11}"
+                    maxLength={11}
+                    title="Phone number must be exactly 11 digits"
+                    placeholder="11 digits phone number"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
                   />
                 </div>
                 
                 <div>
                   <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-1">
-                    Date of Birth
+                    Date of Birth*
                   </label>
                   <input
                     type="date"
@@ -394,13 +441,15 @@ const ProfilePage: React.FC = () => {
                     name="dateOfBirth"
                     value={profile.dateOfBirth}
                     onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]} // Prevent future dates in date picker
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
                   />
                 </div>
                 
                 <div>
                   <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
-                    Gender
+                    Gender*
                   </label>
                   <select
                     id="gender"
@@ -408,6 +457,7 @@ const ProfilePage: React.FC = () => {
                     value={profile.gender}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>

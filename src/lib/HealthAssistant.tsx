@@ -472,6 +472,8 @@ const HealthAssistant: React.FC = () => {
     }, 1000);
     
     return true;
+
+
   };
   
   // Process the AI response for navigation or booking actions

@@ -172,11 +172,15 @@ const DoctorDashboard: React.FC = () => {
     const today = new Date();
     
     if (activeTab === 'upcoming') {
-      return appointmentDate >= today;
+      // Show all scheduled appointments
+      return appointment.status === 'scheduled';
     } else if (activeTab === 'past') {
-      return appointmentDate < today;
+      // Show completed appointments, no-shows, or appointments that have passed
+      return appointment.status === 'completed' || 
+             appointment.status === 'no-show' || 
+             appointment.noShow === true;
     }
-    return true; // 'all' tab
+    return true; // 'all' tab shows everything
   });
 
   const formatDate = (dateString: string) => {
